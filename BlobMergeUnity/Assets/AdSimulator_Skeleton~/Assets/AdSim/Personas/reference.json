@@ -1,0 +1,28 @@
+{
+  "name": "reference",
+  "description": "Calibrated on the reference ad: competent, a few probes and hovers between successes, quick swoops, slow-ish arcs with stalls, follow-through on frees.",
+  "thinkTime": {
+    "x": 0.25,
+    "y": 0.7
+  },
+  "afterSuccessPause": {
+    "x": 0.15,
+    "y": 0.45
+  },
+  "lookAtTargetRate": 0.4,
+  "hesitationRate": 0.15,
+  "probeRate": 0.25,
+  "wrongDirectionRate": 0.1,
+  "missRate": 0.03,
+  "wanderRate": 0.0,
+  "travelSpeed": 1.3,
+  "overshoot": 0.08,
+  "dragSpeed": 280,
+  "maxStroke": 170,
+  "stallRate": 0.15,
+  "followThrough": 0.7,
+  "jitter": 0.0012,
+  "idleDrift": 0.01,
+  "handScale": 0.17,
+  "jitterTau": 0.3
+}

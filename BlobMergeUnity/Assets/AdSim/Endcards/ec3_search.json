@@ -1,0 +1,219 @@
+{
+  "name": "ec3_search",
+  "duration": 4.0,
+  "layers": [
+    {
+      "id": "bg",
+      "color": "#3A4FD0",
+      "fullscreen": true,
+      "pressable": false
+    },
+    {
+      "id": "texture",
+      "image": "Assets/AdSim/Endcards/Placeholder/png/gradient_bg.png",
+      "fullscreen": true,
+      "color": "#7F8CFF",
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0,
+          "d": 0.1,
+          "from": 0.25,
+          "to": 0.25,
+          "ease": "linear"
+        }
+      ]
+    },
+    {
+      "id": "title",
+      "image": "Assets/AdSim/Endcards/Placeholder/png/title.png",
+      "pos": {
+        "x": 0.5,
+        "y": 0.28
+      },
+      "width": 0.775,
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0.3,
+          "d": 0.12,
+          "from": 0,
+          "to": 1,
+          "ease": "linear"
+        },
+        {
+          "prop": "scale",
+          "t": 0.3,
+          "d": 0.45,
+          "from": 0.0,
+          "to": 1.0,
+          "ease": "outBack"
+        },
+        {
+          "prop": "scale",
+          "t": 0.8999999999999999,
+          "d": 0.3,
+          "from": 1.0,
+          "to": 1.2,
+          "ease": "punch"
+        },
+        {
+          "prop": "rot",
+          "t": 0.8999999999999999,
+          "d": 0.3,
+          "from": 0,
+          "to": -4,
+          "ease": "punch"
+        }
+      ],
+      "anchor": "mass"
+    },
+    {
+      "id": "search",
+      "image": "Assets/AdSim/Endcards/Placeholder/png/search_bar.png",
+      "pos": {
+        "x": 0.5,
+        "y": 0.671
+      },
+      "width": 0.6,
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "scale",
+          "t": 0.6,
+          "d": 0.35,
+          "from": 0,
+          "to": 1,
+          "ease": "outBack"
+        }
+      ]
+    },
+    {
+      "id": "query",
+      "text": "Point Out",
+      "textSize": 0.044,
+      "color": "#2B2F66",
+      "align": "left",
+      "pos": {
+        "x": 0.29,
+        "y": 0.671
+      },
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "chars",
+          "t": 0.9,
+          "d": 0.7,
+          "from": 0,
+          "to": 1,
+          "ease": "linear"
+        }
+      ]
+    },
+    {
+      "id": "appstore",
+      "image": "Assets/AdSim/Endcards/Placeholder/png/appstore.png",
+      "pos": {
+        "x": 0.283,
+        "y": 0.793
+      },
+      "width": 0.39,
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0.5,
+          "d": 0.3,
+          "from": 0,
+          "to": 1,
+          "ease": "outCubic"
+        },
+        {
+          "prop": "y",
+          "t": 0.5,
+          "d": 0.35,
+          "from": 0.85,
+          "to": 0.793,
+          "ease": "outCubic"
+        }
+      ]
+    },
+    {
+      "id": "playstore",
+      "image": "Assets/AdSim/Endcards/Placeholder/png/playstore.png",
+      "pos": {
+        "x": 0.717,
+        "y": 0.793
+      },
+      "width": 0.39,
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0.55,
+          "d": 0.3,
+          "from": 0,
+          "to": 1,
+          "ease": "outCubic"
+        },
+        {
+          "prop": "y",
+          "t": 0.55,
+          "d": 0.35,
+          "from": 0.85,
+          "to": 0.793,
+          "ease": "outCubic"
+        }
+      ]
+    },
+    {
+      "id": "fade",
+      "color": "#000000",
+      "fullscreen": true,
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0,
+          "d": 0.35,
+          "from": 1,
+          "to": 0,
+          "ease": "outCubic"
+        }
+      ]
+    }
+  ],
+  "hand": [
+    {
+      "t": 0.0,
+      "action": "exit",
+      "speed": 2.5
+    }
+  ],
+  "sfx": [
+    {
+      "t": 0.0,
+      "clip": "Assets/AdSim/Endcards/Placeholder/sfx/logo_whoosh.wav",
+      "volume": 0.8,
+      "maxLength": 4.0
+    },
+    {
+      "t": 1.35,
+      "clip": "Assets/AdSim/Endcards/Placeholder/sfx/arrow_out.mp3",
+      "volume": 0.6
+    },
+    {
+      "t": 0.6,
+      "clip": "Assets/AdSim/Endcards/Placeholder/sfx/pop.mp3",
+      "volume": 0.7
+    },
+    {
+      "t": 2.25,
+      "clip": "Assets/AdSim/Endcards/Placeholder/sfx/vo_play_now.mp3",
+      "volume": 1.0
+    }
+  ],
+  "font": "Assets/AdSim/Fonts/Poppins-Bold.ttf"
+}

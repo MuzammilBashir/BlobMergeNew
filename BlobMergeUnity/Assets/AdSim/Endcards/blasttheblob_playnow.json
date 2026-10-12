@@ -1,0 +1,192 @@
+{
+  "name": "blasttheblob_playnow",
+  "duration": 3.5,
+  "tapSfx": "Assets/AdSim/Endcards/BlastTheBlob/sfx/ec_tap.wav",
+  "tapVolume": 1.0,
+  "layers": [
+    {
+      "id": "plate",
+      "image": "Assets/AdSim/Endcards/BlastTheBlob/plate.png",
+      "fullscreen": true,
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0.0,
+          "d": 0.3333,
+          "from": 0,
+          "to": 1,
+          "ease": "linear"
+        }
+      ]
+    },
+    {
+      "id": "icon",
+      "image": "Assets/AdSim/Endcards/BlastTheBlob/icon.png",
+      "pos": {
+        "x": 0.5,
+        "y": 0.24
+      },
+      "width": 0.56,
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0.3667,
+          "d": 0.0333,
+          "from": 0,
+          "to": 1,
+          "ease": "linear"
+        },
+        {
+          "prop": "scale",
+          "t": 0.3667,
+          "d": 0.2333,
+          "from": 0.1,
+          "to": 1.15,
+          "ease": "outCubic"
+        },
+        {
+          "prop": "scale",
+          "t": 0.6,
+          "d": 0.1333,
+          "from": 1.15,
+          "to": 1.0,
+          "ease": "inOutCubic"
+        }
+      ]
+    },
+    {
+      "id": "title",
+      "image": "Assets/AdSim/Endcards/BlastTheBlob/title.png",
+      "pos": {
+        "x": 0.5,
+        "y": 0.555
+      },
+      "width": 0.72,
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0.6667,
+          "d": 0.0333,
+          "from": 0,
+          "to": 1,
+          "ease": "linear"
+        },
+        {
+          "prop": "scale",
+          "t": 0.6667,
+          "d": 0.2333,
+          "from": 0.0,
+          "to": 1.15,
+          "ease": "outCubic"
+        },
+        {
+          "prop": "scale",
+          "t": 0.9,
+          "d": 0.1,
+          "from": 1.15,
+          "to": 1.0,
+          "ease": "inOutCubic"
+        }
+      ]
+    },
+    {
+      "id": "button",
+      "image": "Assets/AdSim/Endcards/BlastTheBlob/button.png",
+      "pos": {
+        "x": 0.5,
+        "y": 0.79
+      },
+      "width": 0.5,
+      "pressable": true,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0.9,
+          "d": 0.0333,
+          "from": 0,
+          "to": 1,
+          "ease": "linear"
+        },
+        {
+          "prop": "scale",
+          "t": 0.9,
+          "d": 0.2333,
+          "from": 0.0,
+          "to": 1.15,
+          "ease": "outCubic"
+        },
+        {
+          "prop": "scale",
+          "t": 1.1333,
+          "d": 0.1,
+          "from": 1.15,
+          "to": 1.0,
+          "ease": "inOutCubic"
+        }
+      ]
+    }
+  ],
+  "hand": [
+    {
+      "t": 0.0,
+      "action": "moveTo",
+      "pos": {
+        "x": 1.1,
+        "y": 1.08
+      },
+      "duration": 0.2667
+    },
+    {
+      "t": 1.7333,
+      "action": "tap",
+      "target": "button",
+      "offset": {
+        "x": 0.06,
+        "y": 0.02
+      },
+      "duration": 0.5333,
+      "hold": 0.1333
+    },
+    {
+      "t": 0.0,
+      "action": "hover",
+      "hold": 3.5
+    }
+  ],
+  "sfx": [
+    {
+      "t": 0.0,
+      "clip": "Assets/AdSim/Endcards/BlastTheBlob/sfx/ec_whoosh.wav",
+      "volume": 0.6,
+      "maxLength": 1.5
+    },
+    {
+      "t": 0.3667,
+      "clip": "Assets/AdSim/Endcards/BlastTheBlob/sfx/ec_pop_1.wav",
+      "volume": 0.7
+    },
+    {
+      "t": 0.6667,
+      "clip": "Assets/AdSim/Endcards/BlastTheBlob/sfx/ec_pop_2.wav",
+      "volume": 0.7
+    },
+    {
+      "t": 0.9,
+      "clip": "Assets/AdSim/Endcards/BlastTheBlob/sfx/ec_pop_3.wav",
+      "volume": 0.7
+    },
+    {
+      "t": 0.6667,
+      "clip": "Assets/AdSim/Endcards/BlastTheBlob/sfx/una_blast.wav",
+      "volume": 1.0
+    },
+    {
+      "t": 2.2667,
+      "clip": "Assets/AdSim/Endcards/BlastTheBlob/sfx/una_playnow.wav",
+      "volume": 1.0
+    }
+  ]
+}

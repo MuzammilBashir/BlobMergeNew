@@ -1,0 +1,200 @@
+{
+  "name": "ec2_tryit",
+  "duration": 4.0,
+  "tapSfx": "Assets/AdSim/Endcards/Placeholder/sfx/click.mp3",
+  "tapVolume": 1.0,
+  "layers": [
+    {
+      "id": "bg",
+      "color": "#121826",
+      "fullscreen": true,
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0,
+          "d": 0.25,
+          "from": 0,
+          "to": 1,
+          "ease": "outCubic"
+        }
+      ]
+    },
+    {
+      "id": "title",
+      "image": "Assets/AdSim/Endcards/Placeholder/png/title.png",
+      "pos": {
+        "x": 0.505,
+        "y": 0.203
+      },
+      "width": 0.775,
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0.3,
+          "d": 0.12,
+          "from": 0,
+          "to": 1,
+          "ease": "linear"
+        },
+        {
+          "prop": "scale",
+          "t": 0.3,
+          "d": 0.45,
+          "from": 0.0,
+          "to": 1.0,
+          "ease": "outBack"
+        },
+        {
+          "prop": "scale",
+          "t": 0.8999999999999999,
+          "d": 0.3,
+          "from": 1.0,
+          "to": 1.2,
+          "ease": "punch"
+        },
+        {
+          "prop": "rot",
+          "t": 0.8999999999999999,
+          "d": 0.3,
+          "from": 0,
+          "to": -4,
+          "ease": "punch"
+        }
+      ],
+      "anchor": "mass"
+    },
+    {
+      "id": "tagline",
+      "text": "Try it\nyourself!",
+      "textSize": 0.096,
+      "color": "#FFFFFF",
+      "outline": "#0F2D4A",
+      "outlineWidth": 0.008,
+      "pos": {
+        "x": 0.5,
+        "y": 0.497
+      },
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0.2,
+          "d": 0.3,
+          "from": 0,
+          "to": 1,
+          "ease": "outCubic"
+        },
+        {
+          "prop": "scale",
+          "t": 0.2,
+          "d": 0.35,
+          "from": 0.8,
+          "to": 1,
+          "ease": "outBack"
+        }
+      ],
+      "lineSpacing": 1.0
+    },
+    {
+      "id": "button",
+      "image": "Assets/AdSim/Endcards/Placeholder/png/play_green.png",
+      "pos": {
+        "x": 0.5,
+        "y": 0.79
+      },
+      "width": 0.63,
+      "anims": [
+        {
+          "prop": "scale",
+          "t": 0.05,
+          "d": 0.4,
+          "from": 0,
+          "to": 1,
+          "ease": "outBack"
+        },
+        {
+          "prop": "scale",
+          "t": 0.5,
+          "d": 0.25,
+          "from": 1,
+          "to": 1.1,
+          "ease": "punch"
+        },
+        {
+          "prop": "scale",
+          "t": 1.6,
+          "d": 0.3,
+          "from": 1,
+          "to": 1.07,
+          "ease": "punch"
+        },
+        {
+          "prop": "scale",
+          "t": 3.1,
+          "d": 0.3,
+          "from": 1,
+          "to": 1.07,
+          "ease": "punch"
+        }
+      ]
+    }
+  ],
+  "hand": [
+    {
+      "t": 0.0,
+      "action": "exit",
+      "speed": 2.5
+    },
+    {
+      "t": 1.65,
+      "action": "moveTo",
+      "target": "button",
+      "offset": {
+        "x": 0.06,
+        "y": 0.03
+      },
+      "speed": 2.0
+    },
+    {
+      "t": 2.2,
+      "action": "tap",
+      "target": "button",
+      "offset": {
+        "x": 0.06,
+        "y": 0.03
+      },
+      "hold": 0.25
+    },
+    {
+      "t": 2.5,
+      "action": "hover",
+      "hold": 0.3
+    },
+    {
+      "t": 2.9,
+      "action": "exit",
+      "speed": 1.8
+    }
+  ],
+  "sfx": [
+    {
+      "t": 0.0,
+      "clip": "Assets/AdSim/Endcards/Placeholder/sfx/logo_whoosh.wav",
+      "volume": 0.8,
+      "maxLength": 4.0
+    },
+    {
+      "t": 1.35,
+      "clip": "Assets/AdSim/Endcards/Placeholder/sfx/arrow_out.mp3",
+      "volume": 0.6
+    },
+    {
+      "t": 2.55,
+      "clip": "Assets/AdSim/Endcards/Placeholder/sfx/vo_play_now.mp3",
+      "volume": 1.0
+    }
+  ],
+  "font": "Assets/AdSim/Fonts/Poppins-Bold.ttf"
+}

@@ -1,0 +1,41 @@
+# --- Unity (project lives in BlobMergeUnity/) ---
+BlobMergeUnity/[Ll]ibrary/
+BlobMergeUnity/[Tt]emp/
+BlobMergeUnity/[Oo]bj/
+BlobMergeUnity/[Bb]uild/
+BlobMergeUnity/[Bb]uilds/
+BlobMergeUnity/[Ll]ogs/
+BlobMergeUnity/[Uu]ser[Ss]ettings/
+BlobMergeUnity/[Mm]emoryCaptures/
+BlobMergeUnity/[Rr]ecordings/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.apk
+*.aab
+*.unitypackage
+.vs/
+.vscode/
+.idea/
+.gradle/
+
+# --- local working folders (build mirror, test/ad output, tooling) ---
+_testclone*/
+_testout/
+_adout/
+_exports/
+_backups/
+tmp/
+.superpowers/
+.claude-flow/
+*.log
+
+# Unity Android build temp
+BlobMergeUnity/.utmp/

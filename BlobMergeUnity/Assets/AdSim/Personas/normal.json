@@ -1,0 +1,53 @@
+{
+  "name": "normal",
+  "description": "Normal human play, calibrated on 11 Point Out ads (normal = 'IQ-test multicut' style): ~35% wrong moves in bursts of ~3 between clean streaks, hand ~0.5 W/s average while moving. Decisions are faster than in Point Out because BlobMerge always offers just 3 lane choices. Uses wall rebounds sometimes.",
+  "thinkTime": {
+    "x": 0.15,
+    "y": 0.45
+  },
+  "afterSuccessPause": {
+    "x": 0.1,
+    "y": 0.3
+  },
+  "lookAtTargetRate": 0.2,
+  "hesitationRate": 0.08,
+  "probeRate": 0.05,
+  "wrongDirectionRate": 0.1,
+  "missRate": 0.02,
+  "wanderRate": 0.35,
+  "wrongBurst": 3,
+  "bankShotRate": 0.4,
+  "bankPreference": 0.0,
+  "wrongDirectionDrag": {
+    "x": 10,
+    "y": 25
+  },
+  "realizeTime": {
+    "x": 0.15,
+    "y": 0.35
+  },
+  "travelSpeed": 1.1,
+  "minTravelTime": 0.15,
+  "overshoot": 0.08,
+  "aimError": 0.012,
+  "curvature": 0.1,
+  "dragSpeed": 300,
+  "stallRate": 0.08,
+  "stallTime": {
+    "x": 0.1,
+    "y": 0.2
+  },
+  "pressDwell": {
+    "x": 0.03,
+    "y": 0.08
+  },
+  "holdBeforeRelease": {
+    "x": 0.03,
+    "y": 0.12
+  },
+  "followThrough": 0.6,
+  "jitter": 0.0012,
+  "jitterTau": 0.3,
+  "idleDrift": 0.01,
+  "handScale": 0.17
+}

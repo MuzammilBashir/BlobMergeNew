@@ -1,0 +1,53 @@
+{
+  "name": "noob",
+  "description": "Noob: always confused \u2014 hovers between lane blobs, grabs one and switches, aims the wrong way first \u2014 and wrong most of the time (~80%). In BlobMerge every non-merge is a wrong move: misses land clearly away from any matching blob so they never roll into a merge. Slightly slower than normal; almost never uses walls.",
+  "thinkTime": {
+    "x": 0.35,
+    "y": 0.9
+  },
+  "afterSuccessPause": {
+    "x": 0.1,
+    "y": 0.35
+  },
+  "lookAtTargetRate": 0.35,
+  "hesitationRate": 0.3,
+  "probeRate": 0.25,
+  "wrongDirectionRate": 0.35,
+  "missRate": 0.04,
+  "wanderRate": 0.8,
+  "bankShotRate": 0.05,
+  "wrongDirectionDrag": {
+    "x": 12,
+    "y": 30
+  },
+  "realizeTime": {
+    "x": 0.15,
+    "y": 0.35
+  },
+  "travelSpeed": 0.95,
+  "minTravelTime": 0.16,
+  "overshoot": 0.1,
+  "aimError": 0.014,
+  "curvature": 0.12,
+  "dragSpeed": 260,
+  "stallRate": 0.2,
+  "stallTime": {
+    "x": 0.1,
+    "y": 0.25
+  },
+  "pressDwell": {
+    "x": 0.04,
+    "y": 0.1
+  },
+  "holdBeforeRelease": {
+    "x": 0.03,
+    "y": 0.15
+  },
+  "followThrough": 0.5,
+  "jitter": 0.0014,
+  "jitterTau": 0.3,
+  "idleDrift": 0.01,
+  "handScale": 0.17,
+  "wrongBurst": 0,
+  "bankPreference": 0.0
+}

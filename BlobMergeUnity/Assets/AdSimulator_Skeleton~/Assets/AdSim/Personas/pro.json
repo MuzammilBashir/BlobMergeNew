@@ -1,0 +1,39 @@
+{
+  "name": "pro",
+  "description": "Fast and decisive: almost no thinking time, no probes, long smooth strokes, small overshoot, flicks through on frees.",
+  "thinkTime": {
+    "x": 0.06,
+    "y": 0.2
+  },
+  "afterSuccessPause": {
+    "x": 0.05,
+    "y": 0.15
+  },
+  "lookAtTargetRate": 0.05,
+  "hesitationRate": 0.0,
+  "probeRate": 0.0,
+  "wrongDirectionRate": 0.0,
+  "missRate": 0.0,
+  "wanderRate": 0.0,
+  "travelSpeed": 2.6,
+  "minTravelTime": 0.1,
+  "overshoot": 0.05,
+  "aimError": 0.006,
+  "curvature": 0.06,
+  "dragSpeed": 620,
+  "maxStroke": 260,
+  "stallRate": 0.0,
+  "pressDwell": {
+    "x": 0.02,
+    "y": 0.05
+  },
+  "holdBeforeRelease": {
+    "x": 0.0,
+    "y": 0.05
+  },
+  "followThrough": 0.9,
+  "jitter": 0.0008,
+  "idleDrift": 0.005,
+  "handScale": 0.17,
+  "jitterTau": 0.3
+}

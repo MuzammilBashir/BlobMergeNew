@@ -1,0 +1,202 @@
+{
+  "name": "blobmerge_playnow",
+  "duration": 4.0,
+  "tapSfx": "Assets/AdSim/Endcards/Placeholder/sfx/click.mp3",
+  "tapVolume": 1.0,
+  "layers": [
+    {
+      "id": "dim",
+      "color": "#1C1038",
+      "fullscreen": true,
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0,
+          "d": 0.35,
+          "from": 0,
+          "to": 0.72,
+          "ease": "outCubic"
+        }
+      ]
+    },
+    {
+      "id": "icon",
+      "image": "Assets/AdSim/Endcards/BlobMerge/icon.png",
+      "pos": {
+        "x": 0.5,
+        "y": 0.24
+      },
+      "width": 0.62,
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "y",
+          "t": 0.45,
+          "d": 0.45,
+          "from": -0.2,
+          "to": 0.24,
+          "ease": "outBack"
+        },
+        {
+          "prop": "scale",
+          "t": 1.35,
+          "d": 0.25,
+          "from": 1,
+          "to": 1.08,
+          "ease": "punch"
+        }
+      ]
+    },
+    {
+      "id": "title",
+      "pos": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "width": 0.775,
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0.35,
+          "d": 0.12,
+          "from": 0,
+          "to": 1,
+          "ease": "linear"
+        },
+        {
+          "prop": "scale",
+          "t": 0.35,
+          "d": 0.45,
+          "from": 0.0,
+          "to": 1.0,
+          "ease": "outBack"
+        },
+        {
+          "prop": "scale",
+          "t": 0.95,
+          "d": 0.3,
+          "from": 1.0,
+          "to": 1.2,
+          "ease": "punch"
+        },
+        {
+          "prop": "rot",
+          "t": 0.95,
+          "d": 0.3,
+          "from": 0,
+          "to": -4,
+          "ease": "punch"
+        }
+      ],
+      "text": "BLOB MERGE",
+      "textSize": 0.105,
+      "color": "#FFFFFF",
+      "outline": "#171A54",
+      "outlineWidth": 0.012
+    },
+    {
+      "id": "button",
+      "image": "Assets/AdSim/Endcards/Placeholder/png/play_now_green.png",
+      "pos": {
+        "x": 0.5,
+        "y": 0.822
+      },
+      "width": 0.6,
+      "anims": [
+        {
+          "prop": "y",
+          "t": 0.5,
+          "d": 0.4,
+          "from": 1.2,
+          "to": 0.822,
+          "ease": "outBack"
+        },
+        {
+          "prop": "scale",
+          "t": 1.5,
+          "d": 0.3,
+          "from": 1,
+          "to": 1.07,
+          "ease": "punch"
+        },
+        {
+          "prop": "scale",
+          "t": 3.1,
+          "d": 0.3,
+          "from": 1,
+          "to": 1.07,
+          "ease": "punch"
+        }
+      ]
+    },
+    {
+      "id": "flash",
+      "color": "#FFFFFF",
+      "fullscreen": true,
+      "pressable": false,
+      "anims": [
+        {
+          "prop": "alpha",
+          "t": 0,
+          "d": 0.35,
+          "from": 0.9,
+          "to": 0,
+          "ease": "outCubic"
+        }
+      ]
+    }
+  ],
+  "hand": [
+    {
+      "t": 0.0,
+      "action": "exit",
+      "speed": 2.5
+    },
+    {
+      "t": 1.5,
+      "action": "moveTo",
+      "target": "button",
+      "offset": {
+        "x": 0.05,
+        "y": 0.02
+      },
+      "speed": 2.0
+    },
+    {
+      "t": 2.05,
+      "action": "tap",
+      "target": "button",
+      "offset": {
+        "x": 0.05,
+        "y": 0.02
+      },
+      "hold": 0.18
+    },
+    {
+      "t": 2.3,
+      "action": "hover",
+      "hold": 0.3
+    },
+    {
+      "t": 2.75,
+      "action": "exit",
+      "speed": 1.8
+    }
+  ],
+  "sfx": [
+    {
+      "t": 0.0,
+      "clip": "Assets/AdSim/Endcards/Placeholder/sfx/logo_whoosh.wav",
+      "volume": 0.8,
+      "maxLength": 4.0
+    },
+    {
+      "t": 1.35,
+      "clip": "Assets/AdSim/Endcards/Placeholder/sfx/arrow_out.mp3",
+      "volume": 0.6
+    }
+  ],
+  "font": "Assets/Fonts/Barlow-Bold.ttf"
+}

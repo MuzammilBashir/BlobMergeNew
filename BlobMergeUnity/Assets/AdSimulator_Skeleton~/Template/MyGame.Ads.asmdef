@@ -1,0 +1,16 @@
+{
+    "name": "MyGame.Ads",
+    "rootNamespace": "MyGame.Ads",
+    "references": [
+        "AdSim.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

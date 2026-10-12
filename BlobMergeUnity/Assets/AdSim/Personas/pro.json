@@ -1,0 +1,53 @@
+{
+  "name": "pro",
+  "description": "Pro: every throw is an exact merge, rebounding off the walls most of the time; 25% faster than normal (hand speeds x1.25, waits /1.25), no detours or mistakes.",
+  "thinkTime": {
+    "x": 0.12,
+    "y": 0.36
+  },
+  "afterSuccessPause": {
+    "x": 0.08,
+    "y": 0.24
+  },
+  "lookAtTargetRate": 0.05,
+  "hesitationRate": 0.0,
+  "probeRate": 0.0,
+  "wrongDirectionRate": 0.0,
+  "missRate": 0.0,
+  "wanderRate": 0.0,
+  "wrongBurst": 0,
+  "bankShotRate": 1.0,
+  "bankPreference": 0.9,
+  "wrongDirectionDrag": {
+    "x": 10,
+    "y": 25
+  },
+  "realizeTime": {
+    "x": 0.15,
+    "y": 0.35
+  },
+  "travelSpeed": 1.375,
+  "minTravelTime": 0.12,
+  "overshoot": 0.05,
+  "aimError": 0.006,
+  "curvature": 0.1,
+  "dragSpeed": 375,
+  "stallRate": 0.0,
+  "stallTime": {
+    "x": 0.1,
+    "y": 0.2
+  },
+  "pressDwell": {
+    "x": 0.024,
+    "y": 0.064
+  },
+  "holdBeforeRelease": {
+    "x": 0.024,
+    "y": 0.096
+  },
+  "followThrough": 0.8,
+  "jitter": 0.0008,
+  "jitterTau": 0.3,
+  "idleDrift": 0.006,
+  "handScale": 0.17
+}

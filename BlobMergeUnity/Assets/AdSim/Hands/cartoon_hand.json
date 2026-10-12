@@ -1,0 +1,22 @@
+{
+  "idleTexture": "Assets/AdSim/Hands/Art/handidle.png",
+  "clickTexture": "Assets/AdSim/Hands/Art/handclick.png",
+  "imageSize": {
+    "x": 500,
+    "y": 500
+  },
+  "idleTip": {
+    "x": 196,
+    "y": 168
+  },
+  "clickTip": {
+    "x": 174,
+    "y": 206
+  },
+  "visibleWidthPx": 136,
+  "pressScale": 0.84,
+  "pressIn": 0.07,
+  "releaseHold": 0.12,
+  "releaseOut": 0.18,
+  "useClickSprite": false
+}

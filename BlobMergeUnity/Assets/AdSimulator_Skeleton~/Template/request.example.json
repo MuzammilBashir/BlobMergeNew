@@ -1,0 +1,14 @@
+{
+  "scene": "Assets/MyGame/Scenes/Game.unity",
+  "director": "MyGame.Ads.MyGameDirector, MyGame.Ads",
+  "persona": "Assets/AdSim/Personas/reference.json",
+  "hand": "Assets/AdSim/Hands/cartoon_hand.json",
+  "output": "Logs/adsim/take.mp4",
+  "width": 720,
+  "height": 1280,
+  "fps": 30,
+  "seed": 1,
+  "maxSeconds": 59,
+  "args": "level=1",
+  "ffmpeg": "ffmpeg"
+}

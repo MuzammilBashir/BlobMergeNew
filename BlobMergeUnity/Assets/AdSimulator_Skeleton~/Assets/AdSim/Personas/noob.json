@@ -1,0 +1,56 @@
+{
+  "name": "noob",
+  "description": "Slow, unsure, many wrong moves: long thinking, frequent probes and wrong directions, misses, some real wrong moves, short shaky strokes with stalls.",
+  "thinkTime": {
+    "x": 0.7,
+    "y": 1.8
+  },
+  "afterSuccessPause": {
+    "x": 0.4,
+    "y": 0.9
+  },
+  "lookAtTargetRate": 0.3,
+  "hesitationRate": 0.4,
+  "probeRate": 0.55,
+  "wrongDirectionRate": 0.35,
+  "missRate": 0.12,
+  "wanderRate": 0.12,
+  "probeDrag": {
+    "x": 12,
+    "y": 40
+  },
+  "wrongDirectionDrag": {
+    "x": 20,
+    "y": 60
+  },
+  "realizeTime": {
+    "x": 0.3,
+    "y": 0.8
+  },
+  "travelSpeed": 0.8,
+  "minTravelTime": 0.25,
+  "overshoot": 0.14,
+  "aimError": 0.02,
+  "curvature": 0.15,
+  "dragSpeed": 170,
+  "maxStroke": 110,
+  "stallRate": 0.35,
+  "stallTime": {
+    "x": 0.2,
+    "y": 0.6
+  },
+  "pressDwell": {
+    "x": 0.08,
+    "y": 0.18
+  },
+  "holdBeforeRelease": {
+    "x": 0.1,
+    "y": 0.4
+  },
+  "followThrough": 0.3,
+  "jitter": 0.002,
+  "idleDrift": 0.014,
+  "handScale": 0.17,
+  "maxSeconds": 240,
+  "jitterTau": 0.3
+}
