@@ -258,6 +258,8 @@ namespace BlobMerge
 
         class MergeJob { public Blob a, b; public float t; public int chain; public bool toLane; }
         readonly List<MergeJob> merges = new List<MergeJob>();
+        /// <summary>Diagnostics (bot): the blob is half of a running merge.</summary>
+        public bool InMergeJob(Blob b) => merges.Exists(m => m.a == b || m.b == b);
 
         float accumulator;
         int nextId = 1;
