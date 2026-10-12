@@ -152,17 +152,75 @@ namespace BlobMerge
         void CollidePair(SoftBody a, SoftBody b, float h)
         {
             float reach = Gap + ContactSlop;
-            if (a.Max.x + reach < b.Min.x || b.Max.x + reach < a.Min.x || a.Max.y + reach < b.Min.y || b.Max.y + reach < a.Min.y) return;
-            if (a.IgnoreGroup == b.Group || b.IgnoreGroup == a.Group) return;
+            long key = a.Id < b.Id ? ((long)a.Id << 32) | (uint)b.Id : ((long)b.Id << 32) | (uint)a.Id;
+            if (a.Max.x + reach < b.Min.x || b.Max.x + reach < a.Min.x || a.Max.y + reach < b.Min.y || b.Max.y + reach < a.Min.y)
+            {
+                if (tangled.Count > 0) tangled.Remove(key);
+                return;
+            }
+            if (a.IgnoreGroup == b.Group || b.IgnoreGroup == a.Group)
+            {
+                if (tangled.Count > 0) tangled.Remove(key); // e.g. a tangled pair that started merging
+                return;
+            }
             float ia = a.InvMass / a.MassScale, ib = b.InvMass / b.MassScale;
             float wa = ia / (ia + ib);
+            if (Untangle(a, b, wa, key)) return;
             bool hit = PushOut(a, b, wa, 1f - wa, h, out var pa);
             hit |= PushOut(b, a, 1f - wa, wa, h, out var pb);
             if (!hit) return;
 
-            long key = a.Id < b.Id ? ((long)a.Id << 32) | (uint)b.Id : ((long)b.Id << 32) | (uint)a.Id;
             if (pairSeen.Add(key))
                 Contacts.Add(new BodyContact { A = a, B = b, Point = pa != Vector2.zero ? pa : pb });
+        }
+
+        // fraction of the missing centre distance slid apart per substep while two bodies are tangled
+        const float UntangleRate = 0.15f;
+        /// <summary>Bot A/B switch ("-blobnodeepfix" turns the untangling off to reproduce the old stuck pairs).</summary>
+        public static bool SeparateDeepOverlaps = true;
+        readonly HashSet<long> tangled = new HashSet<long>();
+        /// <summary>Tangled pairs found so far (bot statistics).</summary>
+        public static int Untangles;
+
+        /// <summary>
+        /// Deep overlap (a body's centre inside the other one: a lane piece spawned into a body sitting in the wall door, a
+        /// merge result spawned into a neighbour...). The per-point push-out can't resolve it: it sends every point to the
+        /// nearest edge of the other body, so the two skins fold around each other and the pair stays stuck for good. Such a
+        /// pair stops colliding and slides apart along its centre line (P and Prev together: no velocity added) until the
+        /// centres are 0.8 x the radius sum apart, then the normal push-out takes over. Ordinary contacts never get here.
+        /// Returns true while the pair is being untangled (no push-out, no contact).
+        /// </summary>
+        bool Untangle(SoftBody a, SoftBody b, float wa, long key)
+        {
+            if (!SeparateDeepOverlaps) return false;
+            Vector2 ca = Centroid(a), cb = Centroid(b), d = ca - cb;
+            float dist = d.magnitude;
+            float target = a.RestRadius * Mathf.Sqrt(a.AreaScale) + b.RestRadius * Mathf.Sqrt(b.AreaScale);
+            if (!tangled.Contains(key))
+            {
+                if (!b.Contains(ca) && !a.Contains(cb)) return false;
+                tangled.Add(key);
+                Untangles++;
+            }
+            else if (dist >= target * 0.8f) // round skins overlapping this little: the push-out separates them
+            {
+                tangled.Remove(key);
+                return false;
+            }
+            Vector2 n = dist > 1e-4f ? d / dist : (a.Id < b.Id ? Vector2.right : Vector2.left);
+            Vector2 shift = n * (Mathf.Max(0f, target - dist) * UntangleRate);
+            Vector2 sa = shift * wa, sb = -shift * (1f - wa);
+            for (int i = 0; i < a.N; i++) { a.P[i] += sa; a.Prev[i] += sa; }
+            for (int i = 0; i < b.N; i++) { b.P[i] += sb; b.Prev[i] += sb; }
+            a.RecalcBounds(); b.RecalcBounds(); // later pairs this substep see where they really are
+            return true;
+        }
+
+        static Vector2 Centroid(SoftBody b)
+        {
+            Vector2 c = Vector2.zero;
+            for (int i = 0; i < b.N; i++) c += b.P[i];
+            return c / b.N;
         }
 
         /// <summary>

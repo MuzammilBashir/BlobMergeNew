@@ -115,7 +115,7 @@ namespace BlobMerge
         {
             var s = new GameObject(name, typeof(RectTransform)).AddComponent<PathStroke>();
             s.rectTransform.SetParent(parent, false);
-            s.rectTransform.sizeDelta = Vector2.zero;
+            s.rectTransform.sizeDelta = new Vector2(Width, Height); // real rect (a zero-size one may be culled on Android); points stay in local units
             s.raycastTarget = false;
             s.color = col;
             s.width = width;

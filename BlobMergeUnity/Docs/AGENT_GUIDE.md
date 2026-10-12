@@ -359,6 +359,10 @@ Then `Read` the PNGs in `_testout` and grep `player.log` for `[BlobMerge]`.
 | `-fishresetgames` | Fish: clear the saved lifetime highest on **every** load (each continue game is a first-time player) |
 | `-blobnodirector` | Fish: `lane.difficultyOn = false` (plain spawn table) |
 | `-blobfilltest` | drop the 2048…1 chain, log `fill test: covered= top= danger= fits=` |
+| `-blobrapid` | Fish stress: throws every 0.6 s, mostly sideways in the lane (into a same-valued lane blob or at a wall door) |
+| `-blobdoortest` / `-blobthrowtest` | spawn lane pieces on top of each other at the doors / weak sideways throw into a lane neighbour; `shotdoor.png`, `shotthrow_a/b.png` |
+| `-blobnodeepfix` | turn off `SoftBodyWorld` untangling (A/B repro of the 2026-10-12 stuck-at-the-wall bug) |
+| (always) | `STUCK` (slow Free/Merging above the danger line, late merges, lane blobs off the lane), `OVERLAP` (centres < 0.6 x radius sum), `UNTANGLE #n`, `over fill=` (tank fill at game over), `summary ... untangles=` |
 
 Log lines: `t=… blobs physicsMs fps`, `aim check … error=` (prediction vs reality), `grow done … above floor`,
 `LANDED WHILE GROWING`, `shake after PILE/lane merge/MAX STRETCH: peak`, `merged -> v IN LANE/in play`,
