@@ -40,6 +40,7 @@ namespace BlobMerge
             {
                 if (a[i] == "-blobauto") float.TryParse(a[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out duration);
                 if (a[i] == "-blobshot") shotPrefix = a[i + 1];
+                if (a[i] == "-blobover") float.TryParse(a[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out forceOverAt);
                 if (a[i] == "-blobpressure") float.TryParse(a[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out pressureOverride);
             }
             continueMode = System.Array.IndexOf(a, "-blobcontinue") >= 0;
@@ -131,6 +132,7 @@ namespace BlobMerge
         // back to back (random 45-80 deg up toward the far side, random power, ~2 throws/s)
         bool ceiling;
         float nextStuckLog;
+        float forceOverAt; // "-blobover <seconds>": end the game then (game-over screen check)
         bool stuckShot;
         bool laneBandShot;
         static int laneBandStuck; // slow Free blobs logged up in the lane band (all games of the session)
@@ -331,6 +333,7 @@ namespace BlobMerge
         float speed = 1f;
         // calibration (spec §0b): game number in this session, periodic difficulty log + "late" screenshot
         static int gameNo;
+        bool overUiShot;
         float nextDifficultyLog;
         int ticksAtLog;
         float tAtLog;
@@ -396,13 +399,14 @@ namespace BlobMerge
             winShotIdx++;
         }
 
-        /// <summary>"-blobfilltest": drops the whole 2048…1 chain (everything a 4096 attempt must hold) and measures it.</summary>
+        /// <summary>"-blobfilltest": drops the chain a whale attempt must hold (narwhal down to the last bar's first creature) and measures it.</summary>
         void FillTest(float t)
         {
             var bd = game.Board;
-            while (fillSpawned < 12 && t > 0.5f + fillSpawned * 0.8f)
+            int chain = ProgressionMath.TopTier - ProgressionMath.MaxWindowStart(game.progression.WindowSize);
+            while (fillSpawned < chain && t > 0.5f + fillSpawned * 0.8f)
             {
-                int v = 2048 >> fillSpawned;
+                int v = 1 << (ProgressionMath.TopTier - 1 - fillSpawned);
                 float x = ((fillSpawned % 3) - 1) * bd.HalfW * 0.5f;
                 game.SpawnFree(v, new Vector2(x, bd.DangerY + 0.3f));
                 fillSpawned++;
@@ -606,6 +610,7 @@ namespace BlobMerge
             TrackShake();
             TrackSquash();
             TrackRebound();
+            if (forceOverAt > 0f && t >= forceOverAt && !game.IsGameOver) game.EndGameNow(); // "-blobover <s>": UI check
 
             if (game.IsGameOver)
             {
@@ -621,6 +626,11 @@ namespace BlobMerge
                         Debug.Log($"[BlobMerge] game {gameNo}: game over t={t:F1}s R={game.lane.GameBest} throws={game.lane.Shots} " +
                                   $"highest={1 << game.progression.Highest} window={game.progression.WindowStart} D={game.lane.Difficulty:F2} " +
                                   $"locks={game.lane.Locks} refusals={game.lane.Refusals}");
+                }
+                else if (!overUiShot && Time.unscaledTime - overAt > 0.7f)
+                {
+                    overUiShot = true; // the game-over popup after its pop-in
+                    if (!string.IsNullOrEmpty(shotPrefix)) ScreenCapture.CaptureScreenshot(shotPrefix + (continueMode ? "overui" + gameNo : "overui") + ".png");
                 }
                 else if (Time.unscaledTime - overAt > 1f)
                 {

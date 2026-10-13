@@ -15,9 +15,9 @@ namespace BlobMerge
         [Tooltip("Creature bar + lifetime progress (Fish scene only). Off = endless game like the other scenes.")]
         public bool enabled = true;
         [Tooltip("Creatures on the bar. Making the last one for the first time shifts the bar one creature along (the smallest stops spawning).")]
-        [Range(2, 13)] public int windowSize = 11;
+        [Range(2, 17)] public int windowSize = 11;
 
-        /// <summary>The lane spawns 1/2/4, so the clownfish (tier 2) counts as already made.</summary>
+        /// <summary>The lane spawns 1/2/4, so the seahorse (tier 2) counts as already made.</summary>
         public const int StartHighest = 2;
         public const string DefaultKeyPrefix = "BlobMerge.Fish.";
 
@@ -46,7 +46,7 @@ namespace BlobMerge
         /// WindowStart (this game).</summary>
         public Events OnValue(int value)
         {
-            int tier = Mathf.Min(GameController.Tier(value), ProgressionMath.TopTier); // 8192+ = orcas too
+            int tier = Mathf.Min(GameController.Tier(value), ProgressionMath.TopTier); // 131072+ = whales too
             var e = new Events
             {
                 newFish = ProgressionMath.IsNewFish(tier, Highest),

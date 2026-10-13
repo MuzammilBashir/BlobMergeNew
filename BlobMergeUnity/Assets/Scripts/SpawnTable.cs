@@ -22,7 +22,7 @@ namespace BlobMerge
             public static Shape Default => new Shape { start = 3, lag = 3, cap = 6, decay = 0.55f, fadeFrom = 6, fade = 0.6f };
         }
 
-        /// <summary>Biggest tier that may spawn: clamp(max(ws+start-1, R-lag), ≤ ws+cap-1, ≤ orca).</summary>
+        /// <summary>Biggest tier that may spawn: clamp(max(ws+start-1, R-lag), ≤ ws+cap-1, ≤ whale).</summary>
         public static int PoolTop(int r, int windowStart, Shape s)
         {
             int top = Mathf.Max(windowStart + Mathf.Max(1, s.start) - 1, r - s.lag); // pool never empty
@@ -30,7 +30,7 @@ namespace BlobMerge
         }
 
         /// <summary>
-        /// Normalised spawn chance per tier (index = tier, 0..12; 0 outside [windowStart, PoolTop]).
+        /// Normalised spawn chance per tier (index = tier, 0..TopTier; 0 outside [windowStart, PoolTop]).
         /// Weight(t) = decay^(t-ws) × fade^max(0, (R-fadeFrom)-t).
         /// </summary>
         public static float[] Weights(int r, int windowStart, Shape s, float[] into = null)
@@ -72,8 +72,8 @@ namespace BlobMerge
             return last; // u == 1 / rounding
         }
 
-        /// <summary>Base difficulty for the biggest tier made this game: lerp(min, max, (R-2)/10).</summary>
-        public static float Base(int r, float min, float max) => Mathf.Lerp(min, max, (r - 2) / 10f);
+        /// <summary>Base difficulty for the biggest tier made this game: lerp(min, max, (R-2)/(TopTier-2)).</summary>
+        public static float Base(int r, float min, float max) => Mathf.Lerp(min, max, (r - 2) / (ProgressionMath.TopTier - 2f));
 
         /// <summary>
         /// Sawtooth difficulty: <paramref name="baseD"/> minus <paramref name="relaxDepth"/> for <paramref name="relaxSeconds"/>

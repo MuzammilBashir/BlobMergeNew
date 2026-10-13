@@ -1,5 +1,13 @@
 # Fish scene — progression & queue balancing (design spec)
 
+**2026-10-13: 17 creatures** (user order): Fry → Neon Tetra → Seahorse → Clownfish → Pufferfish → Jellyfish →
+Angelfish → Sea Turtle → Octopus → Seal → Dolphin → Shark → Ray → Hammerhead Shark → Orca → Narwhal → Whale
+(tiers 0–16, values 1…65536, `ProgressionMath.TopTier` 16, sprites `Resources/Fish/fish_00..16`, eyes/swim in
+`FishLook`, bubble colours in `BoardTheme_Fish`). New sizes `fishTierStep` 0.075 to `fishBigFromTier` 10, then
+`fishBigTierStep` 0.04 (whale 1.49): the whale attempt's chain (narwhal…angelfish) fills 74 % (`-blobfilltest`).
+Difficulty base now lerps over (R-2)/(TopTier-2). Window still 11 → last bar = Angelfish…Whale (start 6). Bot: Dolphin
+(first shift) at ~394 s bot ≈ 16 human-min. Older lines below that name tiers by number predate this.
+
 Status (2026-10-12, latest): **v2 built, reviewed, APK `Builds/BlobMerge_Fish.apk` 14:40** — one continuous game,
 11-creature bar with per-game shift, spawn table + difficulty director (§0b), 13 creatures in the user's order (below).
 §3 levels, §5 bar and §6 level flow describe v1 (removed; history). §2, §4 and §7 still apply where not superseded.

@@ -34,8 +34,8 @@ namespace BlobMerge
                                                              ProgressionMath.ShiftDue(11, 10, 1, 11));
             Check("no shift below the last creature", !ProgressionMath.ShiftDue(9, 8, 0, 11));
             Check("no shift when it is not new", !ProgressionMath.ShiftDue(10, 10, 0, 11));
-            Check("no shift past the orca (tier-12 end)", !ProgressionMath.ShiftDue(12, 11, 2, 11) &&
-                                                          ProgressionMath.MaxWindowStart(11) == 2);
+            Check("no shift past the whale (tier-16 end)", !ProgressionMath.ShiftDue(16, 15, 6, 11) &&
+                                                           ProgressionMath.MaxWindowStart(11) == 6);
             Check("spawn floor = 2^windowStart", ProgressionMath.SpawnFloor(0) == 1 && ProgressionMath.SpawnFloor(1) == 2 &&
                                                  ProgressionMath.SpawnFloor(2) == 4);
 
@@ -62,7 +62,7 @@ namespace BlobMerge
         static void SpawnTableTests()
         {
             var s = SpawnTable.Shape.Default;
-            Check("pool new game = fry..clownfish", SpawnTable.PoolTop(2, 0, s) == 2 && SpawnTable.PoolTop(5, 0, s) == 2);
+            Check("pool new game = fry..seahorse", SpawnTable.PoolTop(2, 0, s) == 2 && SpawnTable.PoolTop(5, 0, s) == 2);
             Check("pool grows with R - lag", SpawnTable.PoolTop(6, 0, s) == 3 && SpawnTable.PoolTop(7, 0, s) == 4);
             Check("pool capped at ws + cap - 1", SpawnTable.PoolTop(9, 0, s) == 5 && SpawnTable.PoolTop(12, 2, s) == 7 &&
                                                  SpawnTable.PoolTop(10, 1, s) == 6);
@@ -71,9 +71,9 @@ namespace BlobMerge
             Check("pool never empty (start/cap clamped to 1)", SpawnTable.PoolTop(2, 0, bad) == 0 && SpawnTable.PoolTop(9, 3, bad) == 3 &&
                                                                SpawnTable.Weights(9, 3, bad)[3] == 1f);
             Check("table new game 54/30/16", Row(SpawnTable.Weights(2, 0, s), 0, 54, 30, 16));
-            Check("table turtle row 50/27/15/8", Row(SpawnTable.Weights(6, 0, s), 0, 50, 27, 15, 8));
-            Check("table whale row 24/22/20/18/10/6", Row(SpawnTable.Weights(9, 0, s), 0, 24, 22, 20, 18, 10, 6));
-            Check("table orca row (floor 2) 22/20/18/17/15/8", Row(SpawnTable.Weights(12, 2, s), 2, 22, 20, 18, 17, 15, 8));
+            Check("table R=6 row 50/27/15/8", Row(SpawnTable.Weights(6, 0, s), 0, 50, 27, 15, 8));
+            Check("table R=9 row 24/22/20/18/10/6", Row(SpawnTable.Weights(9, 0, s), 0, 24, 22, 20, 18, 10, 6));
+            Check("table R=12 row (floor 2) 22/20/18/17/15/8", Row(SpawnTable.Weights(12, 2, s), 2, 22, 20, 18, 17, 15, 8));
             float sum = 0f; foreach (var x in SpawnTable.Weights(11, 1, s)) sum += x;
             Check("table normalised", Mathf.Abs(sum - 1f) < 1e-4f);
             var w = new float[13]; w[0] = 0.5f; w[1] = 0.3f; w[2] = 0.2f;
@@ -84,8 +84,8 @@ namespace BlobMerge
             Check("sample falls back when only excluded tiers remain", SpawnTable.Sample(w1, 0.5f, 3) == 3 &&
                                                                        SpawnTable.Sample(new float[13], 0.5f) == -1);
             Check("base difficulty 0.15..0.85", Mathf.Approximately(SpawnTable.Base(2, 0.15f, 0.85f), 0.15f) &&
-                                                Mathf.Approximately(SpawnTable.Base(12, 0.15f, 0.85f), 0.85f) &&
-                                                Mathf.Abs(SpawnTable.Base(7, 0.15f, 0.85f) - 0.5f) < 1e-5f);
+                                                Mathf.Approximately(SpawnTable.Base(16, 0.15f, 0.85f), 0.85f) &&
+                                                Mathf.Abs(SpawnTable.Base(9, 0.15f, 0.85f) - 0.5f) < 1e-5f);
             // R = 7 (base 0.5): relax 0.3 for 20 s, climb back over 40 s, grace 90 s at <= 0.1
             float D(float sinceR, float sinceStart) => SpawnTable.Difficulty(0.5f, sinceR, sinceStart, 0.3f, 20f, 40f, 90f, 0.1f);
             Check("grace caps D at 0.1", Mathf.Approximately(D(200f, 30f), 0.1f) && Mathf.Approximately(D(5f, 89f), 0.1f));
@@ -103,34 +103,37 @@ namespace BlobMerge
             var p = new Progression { KeyPrefix = "BlobMerge.SelfTest." }; // test-only keys, deleted afterwards
             p.DeleteSaved();
             p.Load();
-            Check("fresh progress: clownfish made, bar from fry", p.Highest == 2 && p.WindowStart == 0 && p.WindowEnd == 10);
+            Check("fresh progress: seahorse made, bar from fry", p.Highest == 2 && p.WindowStart == 0 && p.WindowEnd == 10);
             var e = p.OnValue(4);
             Check("known fish is no event", !e.newFish && !e.shift && p.Highest == 2);
             e = p.OnValue(8);
-            Check("pufferfish is a new fish", e.newFish && !e.shift && p.Highest == 3);
+            Check("clownfish is a new fish", e.newFish && !e.shift && p.Highest == 3);
             e = p.OnValue(1024);
-            Check("sting ray (11th) shifts the bar", e.newFish && e.shift && p.Highest == 10 && p.WindowStart == 1);
+            Check("dolphin (11th) shifts the bar", e.newFish && e.shift && p.Highest == 10 && p.WindowStart == 1);
             e = p.OnValue(1024);
-            Check("a second sting ray this game: no shift", !e.newFish && !e.shift && p.WindowStart == 1);
+            Check("a second dolphin this game: no shift", !e.newFish && !e.shift && p.WindowStart == 1);
             e = p.OnValue(2048);
-            Check("hammerhead shifts to the end", e.newFish && e.shift && p.WindowStart == 2 && p.WindowEnd == 12);
-            e = p.OnValue(4096);
-            Check("orca is new but never shifts", e.newFish && !e.shift && p.Highest == 12 && p.WindowStart == 2);
-            e = p.OnValue(8192);
-            Check("nothing above the orca", !e.newFish && !e.shift && p.Highest == 12 && p.WindowStart == 2);
+            Check("shark shifts again", e.newFish && e.shift && p.WindowStart == 2 && p.WindowEnd == 12);
+            p.OnValue(4096); p.OnValue(8192); p.OnValue(16384);
+            e = p.OnValue(32768);
+            Check("narwhal shifts to the end", e.newFish && e.shift && p.WindowStart == 6 && p.WindowEnd == 16);
+            e = p.OnValue(65536);
+            Check("whale is new but never shifts", e.newFish && !e.shift && p.Highest == 16 && p.WindowStart == 6);
+            e = p.OnValue(131072);
+            Check("nothing above the whale", !e.newFish && !e.shift && p.Highest == 16 && p.WindowStart == 6);
 
             p.Save();
             PlayerPrefs.SetInt(p.WindowStartKey, 2); // an old v2 saved window
             var q = new Progression { KeyPrefix = p.KeyPrefix };
             q.Load();
-            Check("next game: lifetime highest kept, bar back to the fry", q.Highest == 12 && q.WindowStart == 0 &&
+            Check("next game: lifetime highest kept, bar back to the fry", q.Highest == 16 && q.WindowStart == 0 &&
                                                                            q.GameHighest == 0 &&
-                                                                           PlayerPrefs.GetInt("BlobMerge.SelfTest.Highest") == 9 + 3);
+                                                                           PlayerPrefs.GetInt("BlobMerge.SelfTest.Highest") == 16);
             Check("old saved window key ignored and deleted", !PlayerPrefs.HasKey(q.WindowStartKey));
             e = q.OnValue(1024);
-            Check("known sting ray shifts this game's bar (no new fish)", !e.newFish && e.shift && q.WindowStart == 1);
+            Check("known dolphin shifts this game's bar (no new fish)", !e.newFish && e.shift && q.WindowStart == 1);
             q.NewGame();
-            Check("new game resets the window", q.WindowStart == 0 && q.GameHighest == 0 && q.Highest == 12);
+            Check("new game resets the window", q.WindowStart == 0 && q.GameHighest == 0 && q.Highest == 16);
             Check("default key", new Progression().HighestKey == "BlobMerge.Fish.Highest");
             q.DeleteSaved();
         }

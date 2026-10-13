@@ -49,14 +49,28 @@ MonoBehaviour:
   pieceColors:
   - {r: 1.0, g: 0.4157, b: 0.2392, a: 1}
   - {r: 1.0, g: 0.8235, b: 0.2471, a: 1}
+  - {r: 1.0, g: 0.5529, b: 0.2, a: 1}
   - {r: 1.0, g: 0.5412, b: 0.1647, a: 1}
   - {r: 1.0, g: 0.7882, b: 0.2353, a: 1}
+  - {r: 0.7804, g: 0.6, b: 0.9804, a: 1}
   - {r: 0.2392, g: 0.4902, b: 0.949, a: 1}
   - {r: 0.3608, g: 0.7882, b: 0.2902, a: 1}
   - {r: 0.6902, g: 0.2902, b: 0.8784, a: 1}
+  - {r: 0.6196, g: 0.6784, b: 0.7804, a: 1}
   - {r: 0.498, g: 0.7216, b: 0.9098, a: 1}
   - {r: 0.4235, g: 0.5608, b: 0.7216, a: 1}
   - {r: 0.302, g: 0.8, b: 0.8, a: 1}
   - {r: 0.2, g: 0.3, b: 0.55, a: 1}
   - {r: 0.85, g: 0.3, b: 0.55, a: 1}
+  - {r: 0.3608, g: 0.5608, b: 0.8627, a: 1}
   - {r: 0.2471, g: 0.549, b: 0.9412, a: 1}
+  uiScorePlate: {fileID: 21300000, guid: b01e58965ab6f32f15415bf05d35c3c0, type: 3}
+  uiCrown: {fileID: 21300000, guid: 0f2a27dc823bccc36d00355717f44bff, type: 3}
+  uiSettingsButton: {fileID: 21300000, guid: d22dac892773f53991c6c1267c18e6ab, type: 3}
+  uiPopup: {fileID: 21300000, guid: 0f7b99e69a5e6e7f056030dac8ed0881, type: 3}
+  uiButton: {fileID: 21300000, guid: 42818c5d58435f1381b54da2a714c660, type: 3}
+  uiGameOverArt: {fileID: 21300000, guid: 3c7dc708088fd1b3d55ab5d3d46bff19, type: 3}
+  splashBackground: {fileID: 21300000, guid: 284db30ec1042a44c8a158c226098ac8, type: 3}
+  splashLogo: {fileID: 21300000, guid: b414605b3cd6f7b21705c322825f32f3, type: 3}
+  backgroundPlate: {fileID: 21300000, guid: 1c1486110c47de8d8f8b0e61366e82ad, type: 3}
+  glossyFrame: 1
