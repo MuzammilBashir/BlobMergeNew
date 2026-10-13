@@ -466,7 +466,8 @@ namespace BlobMerge
             if (!now && progression.Highest != ProgressionMath.TopTier - 1) return;
             orcaView = LevelCompleteView.Create(this, hud, celebration, "ALL CREATURES", "FOUND!",
                                                 FishSprite(ProgressionMath.TopTier),
-                                                FishLook.Name(ProgressionMath.TopTier).ToUpperInvariant() + " UNLOCKED!");
+                                                FishLook.Name(ProgressionMath.TopTier).ToUpperInvariant() + " UNLOCKED!",
+                                                Theme.celebrationPrefab);
         }
 
         /// <summary>Progress is saved outside the physics tick (PlayerPrefs.Save writes to disk/registry).</summary>
@@ -1195,15 +1196,15 @@ namespace BlobMerge
             hud.SetOffsetY(hudOffsetY);
             hud.SetScore(score, false);
             hud.SetBest(best);
-            splashing = true;
-            FishUi.Apply(this, hud, Theme, !AdTake, () =>
+            if (hud.playAgainButton != null) hud.playAgainButton.onClick.AddListener(Restart);
+            splashing = !AdTake && SplashView.Show(Theme.splashPrefab, hud.transform, () =>
             {
                 splashing = false;
                 if (aim != null) aim.InputEnabled = true;
             });
             if (ProgressionOn)
             {
-                bar = CreatureBarView.Create(this, hud);
+                bar = CreatureBarView.Create(this, hud, Theme.creatureBarPrefab);
                 bar.ShiftStarted += start => WindowShifted?.Invoke(start);
                 bar.ShiftDone += OnBarShiftDone;
             }

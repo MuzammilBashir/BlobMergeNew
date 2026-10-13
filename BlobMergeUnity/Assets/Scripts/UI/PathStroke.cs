@@ -6,12 +6,14 @@ namespace BlobMerge
 {
     /// <summary>
     /// A polyline drawn as one thick stroke with round caps and round joins (like an SVG path with
-    /// stroke-linecap/linejoin round). Points are in the RectTransform's local units. Used under the creature bar.
+    /// stroke-linecap/linejoin round). Points are in the RectTransform's local units. Used under the creature bar
+    /// (CreatureBar_Fish.prefab: PathOuter / PathInner).
     /// </summary>
     public class PathStroke : MaskableGraphic
     {
-        [System.NonSerialized] public readonly List<Vector2> points = new List<Vector2>();
-        [System.NonSerialized] public float width = 10f;
+        [Tooltip("Path corners in this RectTransform's local units (edit freely; it redraws live).")]
+        public List<Vector2> points = new List<Vector2>();
+        public float width = 10f;
         const int CapSegments = 20;
 
         protected override void OnPopulateMesh(VertexHelper vh)

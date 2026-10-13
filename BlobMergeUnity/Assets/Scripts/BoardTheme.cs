@@ -154,17 +154,13 @@ namespace BlobMerge
         public Color glossBevel = new Color32(0x00, 0x5A, 0x84, 0xFF);
         public Color glossBevelDark = new Color32(0x00, 0x2B, 0x56, 0xFF);
 
-        [Header("UI art (empty = the procedural HUD; Fish: Assets/Art/UI)")]
-        [Tooltip("Score panel art (replaces the rounded panel; its SCORE tab label stays).")]
-        public Sprite uiScorePlate;
-        public Sprite uiCrown;
-        public Sprite uiSettingsButton;
-        [Tooltip("Game-over popup card (set = the Fish fail screen: score, high score, Play again button).")]
-        public Sprite uiPopup;
-        public Sprite uiButton;
-        [Tooltip("Splash shown once per app launch (full-screen art + logo + Loading...).")]
-        public Sprite splashBackground;
-        public Sprite splashLogo;
+        [Header("UI prefabs (empty = none / the code default; edit the prefabs freely)")]
+        [Tooltip("Shown once per app launch over the HUD (Splash_Fish.prefab).")]
+        public SplashView splashPrefab;
+        [Tooltip("Fish creature bar (CreatureBar_Fish.prefab); empty = the code default.")]
+        public CreatureBarView creatureBarPrefab;
+        [Tooltip("Top-creature celebration panel (Celebration_Fish.prefab); empty = the code default.")]
+        public LevelCompleteView celebrationPrefab;
 
         static BoardTheme fallback;
         /// <summary>The original purple look (used when a scene has no theme assigned).</summary>

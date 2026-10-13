@@ -45,12 +45,13 @@ namespace BlobMerge
     }
 
     /// <summary>
-    /// Fish: the full-screen "ALL CREATURES / FOUND!" + "ORCA UNLOCKED!" celebration, played once when the orca is made
-    /// for the first time (approved mock level-complete-juice.html, user revision: the hero fish punch-scales in place, no
-    /// fly-in; tap resumes the same game). Built hidden at scene start under the HUD canvas (no prefab edits); everything
-    /// is timed on <see cref="GameController.WinClock"/> (real seconds since the merge, GameTime based, so it animates
-    /// while the game is frozen and records correctly). Layout in 1080-wide reference units (mock ×3), relative to the
-    /// screen centre.
+    /// Fish: the full-screen "ALL CREATURES / FOUND!" + "ORCA UNLOCKED!" celebration, played once when the top creature
+    /// is made for the first time (approved mock level-complete-juice.html, user revision: the hero fish punch-scales in
+    /// place, no fly-in; tap resumes the same game). The layout is Celebration_Fish.prefab (set on the BoardTheme; edit
+    /// positions, sizes, sprites and colours there; the texts are filled in at runtime, the big word letter by letter
+    /// from the LetterTemplate); without a prefab <see cref="BuildDefault"/> makes the same panel in code. Built hidden
+    /// before it's needed; everything is timed on <see cref="GameController.WinClock"/> (real seconds since the merge,
+    /// GameTime based, so it animates while the game is frozen and records correctly).
     /// </summary>
     public class LevelCompleteView : MonoBehaviour
     {
@@ -62,18 +63,41 @@ namespace BlobMerge
         const float RibbonAt = 1.55f, RibbonDur = 0.4f, BlinkPeriod = 1.1f;
         const float RainFirst = 0.9f, RainSpread = 2.2f;
 
-        // layout (reference units; y up from the screen centre; the hero sits exactly at the centre, the texts keep the
-        // juice mock's spacing around it)
-        const float HeroY = 0f, HeroSize = 450f, LevelY = 576f, CompleteY = 458f, RibbonY = -367f, RibbonW = 840f,
+        // default layout (BuildDefault; reference units, y up from the screen centre; the hero sits at the centre, the
+        // texts keep the juice mock's spacing around it)
+        const float HeroSize = 450f, LevelY = 576f, CompleteY = 458f, RibbonY = -367f, RibbonW = 840f,
                     RibbonH = 132f, TapY = -811f, TapBarGap = 70f;
         static readonly Vector3[] corners = new Vector3[4];
 
-        static readonly Color[] ConfettiColors =
+        [Header("Parts (assigned by the prefab)")]
+        public Image dim;
+        [Tooltip("Rays, core, glows, bubbles and confetti burst from here (behind the hero).")]
+        public RectTransform burstRt;
+        public RayFan rayFan;
+        public Image core;
+        public RectTransform glowLayer, bubbleLayer, confettiLayer;
+        [Tooltip("The glass bubble; its child heroFish gets the creature sprite.")]
+        public RectTransform hero;
+        public Image heroFish;
+        [Tooltip("Small top line (drops in).")]
+        public TMP_Text titleText;
+        [Tooltip("Inactive template: one copy per letter of the big word, centred on its position.")]
+        public TMP_Text letterTemplate;
+        public float letterSpacing = 3f;
+        public RectTransform ribbon;
+        public TMP_Text ribbonLabel;
+        [Tooltip("\"tap to continue\" (kept at least 70 above the creature bar).")]
+        public TMP_Text tapText;
+
+        [Header("Particles")]
+        public Sprite glowSprite;
+        public Sprite risingBubbleSprite;
+        public Color[] confettiColors =
         {
             MeshUtil.Hex("FF6A3D"), MeshUtil.Hex("FFD23F"), MeshUtil.Hex("3D7DF2"), MeshUtil.Hex("B04AE0"),
             MeshUtil.Hex("5CC94A"), MeshUtil.Hex("7FB8E8"), MeshUtil.Hex("FF4FA0"),
         };
-        static readonly Color[] BurstColors =
+        public Color[] burstColors =
         {
             MeshUtil.Hex("FF6A3D"), MeshUtil.Hex("FFD23F"), MeshUtil.Hex("3D7DF2"), MeshUtil.Hex("B04AE0"),
             MeshUtil.Hex("5CC94A"), MeshUtil.Hex("7FE0FF"), MeshUtil.Hex("FF4FA0"),
@@ -81,94 +105,89 @@ namespace BlobMerge
 
         GameController game;
         LevelCelebration cfg;
-        RectTransform root, hero, heroFish, levelRt, ribbonRt;
-        Image dim;
+        RectTransform root, heroFishRt, levelRt, ribbonRt;
         CanvasGroup heroGroup, ribbonGroup;
-        TMP_Text levelText, tapText;
+        TMP_Text levelText;
+        float levelY, tapY0;
         readonly List<TMP_Text> letters = new List<TMP_Text>();
 
         class Piece { public RectTransform rt; public Image img; public Vector2 from, delta; public float spin, dur, delay; }
         readonly List<Piece> rain = new List<Piece>();
 
         /// <summary>
-        /// Builds the whole panel hidden (call at scene start: textures, material and ~200 UI objects are made then, so
-        /// the merge frame only activates and animates). <see cref="Play"/> starts it. <paramref name="title"/> = the small
-        /// top line, <paramref name="word"/> = the big line popping in letter by letter, <paramref name="ribbon"/> = the
-        /// green ribbon's text.
+        /// The panel from <paramref name="prefab"/> (or the code default), hidden (call before it's needed: textures and
+        /// ~200 UI objects are made then, so the merge frame only activates and animates). <see cref="Play"/> starts it.
+        /// <paramref name="title"/> = the small top line, <paramref name="word"/> = the big line popping in letter by
+        /// letter, <paramref name="ribbonText"/> = the green ribbon's text.
         /// </summary>
         public static LevelCompleteView Create(GameController g, HudView hud, LevelCelebration cfg, string title, string word,
-                                               Sprite fish, string ribbon)
+                                               Sprite fish, string ribbonText, LevelCompleteView prefab = null)
         {
             var canvas = hud.GetComponent<Canvas>();
             if (canvas == null) canvas = hud.GetComponentInChildren<Canvas>();
-            var go = new GameObject("OrcaCelebration", typeof(RectTransform));
-            var v = go.AddComponent<LevelCompleteView>();
+            var v = prefab != null ? Instantiate(prefab, canvas.transform, false) : BuildDefault(canvas.transform);
+            v.name = "OrcaCelebration";
             v.game = g;
             v.cfg = cfg;
-            v.root = (RectTransform)go.transform;
-            v.root.SetParent(canvas.transform, false);
+            v.root = (RectTransform)v.transform;
             v.root.anchorMin = Vector2.zero;
             v.root.anchorMax = Vector2.one;
             v.root.offsetMin = v.root.offsetMax = Vector2.zero;
             v.root.SetAsLastSibling(); // above the HUD and the creature bar
-            // own (nested) canvas: the per-frame ray mesh and moving pieces re-batch only this panel, not the whole HUD
-            go.AddComponent<Canvas>();
 
-            v.dim = Img(v.root, "Dim", null, new Color(7f / 255f, 20f / 255f, 45f / 255f, 0f), Vector2.zero, Vector2.zero);
-            v.dim.rectTransform.anchorMin = Vector2.zero;
-            v.dim.rectTransform.anchorMax = Vector2.one;
-            v.dim.rectTransform.offsetMin = v.dim.rectTransform.offsetMax = Vector2.zero;
-
-            v.BuildBurst();
-
-            // hero: the unlocked fish in a glass bubble, punch-scales in place
-            var heroImg = Img(v.root, "Hero", BubbleSprite, Color.white, new Vector2(0f, HeroY), new Vector2(HeroSize, HeroSize));
-            v.hero = heroImg.rectTransform;
-            v.heroGroup = v.hero.gameObject.AddComponent<CanvasGroup>();
-            var fishImg = Img(v.hero, "Fish", fish, Color.white, Vector2.zero, new Vector2(HeroSize * 0.76f, HeroSize * 0.76f));
-            fishImg.preserveAspect = true;
-            v.heroFish = fishImg.rectTransform;
-
-            v.levelText = Text(v.root, "Title", title, 78f, new Vector2(0f, LevelY));
+            var c = v.dim.color; c.a = 0f; v.dim.color = c;
+            v.heroGroup = Group(v.hero);
+            v.heroFish.sprite = fish;
+            v.heroFishRt = v.heroFish.rectTransform;
+            v.levelText = v.titleText;
+            v.levelText.text = title;
             v.levelRt = v.levelText.rectTransform;
+            v.levelY = v.levelRt.anchoredPosition.y;
+            v.ribbonRt = v.ribbon;
+            v.ribbonGroup = Group(v.ribbon);
+            v.ribbonLabel.text = ribbonText;
+            v.tapY0 = v.tapText.rectTransform.anchoredPosition.y;
+            v.BuildLetters(word);
+            v.BuildBurst();
+            if (cfg.celebrationConfetti) v.BuildRain();
+            v.gameObject.SetActive(false);
+            return v;
+        }
 
-            // the big word: one TMP per letter so each can pop on its own
-            const float letterSize = 132f, spacing = 3f;
+        static CanvasGroup Group(RectTransform rt)
+        {
+            var g = rt.GetComponent<CanvasGroup>();
+            return g != null ? g : rt.gameObject.AddComponent<CanvasGroup>();
+        }
+
+        /// <summary>The big word: one TMP per letter (copies of the template) so each can pop on its own.</summary>
+        void BuildLetters(string word)
+        {
+            var tpl = letterTemplate;
+            tpl.gameObject.SetActive(false);
+            Vector2 at = tpl.rectTransform.anchoredPosition;
             var widths = new float[word.Length];
             float total = 0f;
             for (int i = 0; i < word.Length; i++)
             {
-                var t = Text(v.root, "Letter" + i, word[i].ToString(), letterSize, Vector2.zero);
-                widths[i] = t.GetPreferredValues(word[i].ToString()).x + spacing;
+                var t = Instantiate(tpl, tpl.transform.parent, false);
+                t.name = "Letter" + i;
+                t.gameObject.SetActive(true);
+                t.text = word[i].ToString();
+                widths[i] = t.GetPreferredValues(t.text).x + letterSpacing;
                 total += widths[i];
-                v.letters.Add(t);
+                letters.Add(t);
             }
-            float x = -total * 0.5f;
+            float x = at.x - total * 0.5f;
             for (int i = 0; i < word.Length; i++)
             {
-                v.letters[i].rectTransform.anchoredPosition = new Vector2(x + widths[i] * 0.5f, CompleteY);
-                v.letters[i].rectTransform.sizeDelta = new Vector2(widths[i] + 20f, 180f);
+                letters[i].rectTransform.anchoredPosition = new Vector2(x + widths[i] * 0.5f, at.y);
+                letters[i].rectTransform.sizeDelta = new Vector2(widths[i] + 20f, tpl.rectTransform.sizeDelta.y);
                 x += widths[i];
             }
-
-            // green ribbon ("ORCA UNLOCKED!")
-            v.ribbonRt = new GameObject("Ribbon", typeof(RectTransform)).GetComponent<RectTransform>();
-            v.ribbonRt.SetParent(v.root, false);
-            v.ribbonRt.anchoredPosition = new Vector2(0f, RibbonY);
-            v.ribbonRt.sizeDelta = new Vector2(RibbonW, RibbonH);
-            v.ribbonGroup = v.ribbonRt.gameObject.AddComponent<CanvasGroup>();
-            Img(v.ribbonRt, "Shadow", CapsuleSprite(false), MeshUtil.Hex("145A1B"), new Vector2(0f, -12f), new Vector2(RibbonW, RibbonH));
-            Img(v.ribbonRt, "Body", CapsuleSprite(true), Color.white, Vector2.zero, new Vector2(RibbonW, RibbonH));
-            Text(v.ribbonRt, "Label", ribbon, 51f, Vector2.zero);
-
-            v.tapText = Text(v.root, "Tap", "tap to continue", 48f, new Vector2(0f, TapY));
-
-            if (cfg.celebrationConfetti) v.BuildRain();
-            go.SetActive(false);
-            return v;
         }
 
-        /// <summary>The orca merge: shows the panel and starts its timeline (<see cref="GameController.WinClock"/>).</summary>
+        /// <summary>The top creature's merge: shows the panel and starts its timeline (<see cref="GameController.WinClock"/>).</summary>
         public void Play()
         {
             root.SetAsLastSibling();
@@ -177,14 +196,70 @@ namespace BlobMerge
             LateUpdate();
         }
 
+        // ------------------------------------------------------------------ default layout (the prefab builder saves this)
+        public static LevelCompleteView BuildDefault(Transform parent)
+        {
+            var go = new GameObject("OrcaCelebration", typeof(RectTransform));
+            var v = go.AddComponent<LevelCompleteView>();
+            var root = (RectTransform)go.transform;
+            root.SetParent(parent, false);
+            root.anchorMin = Vector2.zero;
+            root.anchorMax = Vector2.one;
+            root.offsetMin = root.offsetMax = Vector2.zero;
+            // own (nested) canvas: the per-frame ray mesh and moving pieces re-batch only this panel, not the whole HUD
+            go.AddComponent<Canvas>();
+
+            v.dim = Img(root, "Dim", null, new Color(7f / 255f, 20f / 255f, 45f / 255f, 1f), Vector2.zero, Vector2.zero);
+            v.dim.rectTransform.anchorMin = Vector2.zero;
+            v.dim.rectTransform.anchorMax = Vector2.one;
+            v.dim.rectTransform.offsetMin = v.dim.rectTransform.offsetMax = Vector2.zero;
+
+            v.burstRt = Child(root, "Burst");
+            v.rayFan = new GameObject("Rays", typeof(RectTransform)).AddComponent<RayFan>();
+            v.rayFan.rectTransform.SetParent(v.burstRt, false);
+            v.rayFan.rectTransform.sizeDelta = Vector2.zero;
+            v.rayFan.raycastTarget = false;
+            v.core = Img(v.burstRt, "Core", CoreSprite, Color.white, Vector2.zero, Vector2.one);
+            v.glowLayer = Child(v.burstRt, "Glows");
+            v.bubbleLayer = Child(v.burstRt, "Bubbles");
+            v.confettiLayer = Child(v.burstRt, "Confetti");
+            v.glowSprite = GlowDotSprite;
+            v.risingBubbleSprite = RiseBubbleSprite;
+
+            // hero: the unlocked fish in a glass bubble, punch-scales in place
+            v.hero = Img(root, "Hero", BubbleSprite, Color.white, Vector2.zero, new Vector2(HeroSize, HeroSize)).rectTransform;
+            v.heroFish = Img(v.hero, "Fish", null, Color.white, Vector2.zero, new Vector2(HeroSize * 0.76f, HeroSize * 0.76f));
+            v.heroFish.preserveAspect = true;
+
+            v.titleText = Text(root, "Title", "ALL CREATURES", 78f, new Vector2(0f, LevelY));
+            v.letterTemplate = Text(root, "LetterTemplate", "A", 132f, new Vector2(0f, CompleteY));
+            v.letterTemplate.rectTransform.sizeDelta = new Vector2(150f, 180f);
+
+            // green ribbon ("ORCA UNLOCKED!")
+            v.ribbon = Child(root, "Ribbon");
+            v.ribbon.anchoredPosition = new Vector2(0f, RibbonY);
+            v.ribbon.sizeDelta = new Vector2(RibbonW, RibbonH);
+            Img(v.ribbon, "Shadow", CapsuleSprite(false), MeshUtil.Hex("145A1B"), new Vector2(0f, -12f), new Vector2(RibbonW, RibbonH));
+            Img(v.ribbon, "Body", CapsuleSprite(true), Color.white, Vector2.zero, new Vector2(RibbonW, RibbonH));
+            v.ribbonLabel = Text(v.ribbon, "Label", "ORCA UNLOCKED!", 51f, Vector2.zero);
+
+            v.tapText = Text(root, "Tap", "tap to continue", 48f, new Vector2(0f, TapY));
+            return v;
+        }
+
+        static RectTransform Child(RectTransform parent, string name)
+        {
+            var rt = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            rt.sizeDelta = Vector2.zero;
+            return rt;
+        }
+
         // ------------------------------------------------------------------ unlock burst (isolated: swap freely)
         // Mock burst-v1/v2 (canvas JS = spec), canvas px x1.5 = reference units. Burst clock bt = WinClock - BurstOffset
         // (the mock's t: burst-in 0.4 -> 0.9 s ease-out-cubic, hero punch at 0.45 s = our HeroAt). Rays, core and glow
         // particles are additive; bubbles and confetti alpha-blended; all behind the hero.
         const float BurstOffset = HeroAt - 0.45f, MockPx = 1.5f;
-        RectTransform burstRt;
-        RayFan rayFan;
-        Image core;
         class Glow { public Image img; public float life, max; }
         class Bubble { public Image img; public Vector2 pos; public float speed, phase; }
         class Bit { public Image img; public Vector2 pos, vel; public float rot, spin, delay; }
@@ -194,7 +269,6 @@ namespace BlobMerge
         // pooled entries (Image + state), pre-made at build; grow only if a tunable is raised a lot
         readonly Stack<Glow> glowPool = new Stack<Glow>();
         readonly Stack<Bubble> bubblePool = new Stack<Bubble>();
-        RectTransform glowLayer, bubbleLayer, confettiLayer; // draw order: rays, core, glows, bubbles, confetti, hero
         float glowDue, bubbleDue;
         const int GlowPrewarm = 40, BubblePrewarm = 30;
 
@@ -213,24 +287,11 @@ namespace BlobMerge
 
         void BuildBurst()
         {
-            burstRt = new GameObject("Burst", typeof(RectTransform)).GetComponent<RectTransform>();
-            burstRt.SetParent(root, false);
-            burstRt.anchoredPosition = new Vector2(0f, HeroY);
-            burstRt.sizeDelta = Vector2.zero;
-
-            rayFan = new GameObject("Rays", typeof(RectTransform)).AddComponent<RayFan>();
-            rayFan.rectTransform.SetParent(burstRt, false);
-            rayFan.rectTransform.sizeDelta = Vector2.zero;
-            rayFan.raycastTarget = false;
             rayFan.material = Additive;
             rayFan.radius = 560f * MockPx;
             rayFan.Generate(cfg.rayCount);
-
-            core = Img(burstRt, "Core", CoreSprite, new Color(1f, 1f, 1f, 0f), Vector2.zero, Vector2.one);
             core.material = Additive;
-            glowLayer = Layer("Glows");
-            bubbleLayer = Layer("Bubbles");
-            confettiLayer = Layer("Confetti");
+            core.color = new Color(1f, 1f, 1f, 0f);
             for (int i = 0; i < GlowPrewarm; i++) glowPool.Push(NewGlow());
             for (int i = 0; i < BubblePrewarm; i++) bubblePool.Push(NewBubble());
 
@@ -238,7 +299,7 @@ namespace BlobMerge
             for (int i = 0; i < cfg.burstConfetti; i++)
             {
                 float a = Random.value * Mathf.PI * 2f, sp = 300f + Random.value * 700f;
-                var img = Img(confettiLayer, "BurstConfetti", null, BurstColors[i % BurstColors.Length], Vector2.zero,
+                var img = Img(confettiLayer, "BurstConfetti", null, burstColors[i % burstColors.Length], Vector2.zero,
                               new Vector2(10f + Random.value * 8f, 16f + Random.value * 10f) * MockPx);
                 img.enabled = false;
                 bits.Add(new Bit
@@ -250,17 +311,9 @@ namespace BlobMerge
             }
         }
 
-        RectTransform Layer(string name)
-        {
-            var rt = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
-            rt.SetParent(burstRt, false);
-            rt.sizeDelta = Vector2.zero;
-            return rt;
-        }
-
         Glow NewGlow()
         {
-            var img = Img(glowLayer, "Glow", GlowDotSprite, Color.clear, Vector2.zero, Vector2.one);
+            var img = Img(glowLayer, "Glow", glowSprite != null ? glowSprite : GlowDotSprite, Color.clear, Vector2.zero, Vector2.one);
             img.material = Additive;
             img.enabled = false;
             return new Glow { img = img };
@@ -268,7 +321,7 @@ namespace BlobMerge
 
         Bubble NewBubble()
         {
-            var img = Img(bubbleLayer, "Bubble", RiseBubbleSprite, Color.white, Vector2.zero, Vector2.one);
+            var img = Img(bubbleLayer, "Bubble", risingBubbleSprite != null ? risingBubbleSprite : RiseBubbleSprite, Color.white, Vector2.zero, Vector2.one);
             img.enabled = false;
             return new Bubble { img = img };
         }
@@ -365,7 +418,7 @@ namespace BlobMerge
         {
             for (int i = 0; i < cfg.confettiPieces; i++)
             {
-                var img = Img(root, "Confetti", null, ConfettiColors[i % ConfettiColors.Length], Vector2.zero, new Vector2(24f, 36f));
+                var img = Img(root, "Confetti", null, confettiColors[i % confettiColors.Length], Vector2.zero, new Vector2(24f, 36f));
                 rain.Add(new Piece
                 {
                     rt = img.rectTransform, img = img,
@@ -402,9 +455,9 @@ namespace BlobMerge
             heroGroup.alpha = t >= HeroAt ? 1f : 0f;
             float hk = Bezier(0.34f, 1.56f, 0.64f, 1f, (t - HeroAt) / HeroDur);
             hero.localScale = Vector3.one * Mathf.LerpUnclamped(HeroFrom, 1f, hk);
-            heroFish.anchoredPosition = new Vector2(0f, BobPx * PingPong(t, BobAt, BobPeriod));
+            heroFishRt.anchoredPosition = new Vector2(0f, BobPx * PingPong(t, BobAt, BobPeriod));
 
-            Drop(levelText, levelRt, LevelY, Bezier(0.34f, 1.56f, 0.64f, 1f, (t - LevelAt) / LevelDur), t >= LevelAt);
+            Drop(levelText, levelRt, levelY, Bezier(0.34f, 1.56f, 0.64f, 1f, (t - LevelAt) / LevelDur), t >= LevelAt);
 
             for (int i = 0; i < letters.Count; i++)
             {
@@ -422,14 +475,14 @@ namespace BlobMerge
             float tap = Mathf.Clamp01((t - cfg.tapAfter) / 0.3f);
             tapText.alpha = tap * Mathf.Lerp(1f, 0.35f, PingPong(t, cfg.tapAfter + 0.3f, BlinkPeriod));
             // never on the creature bar: at least TapBarGap above its top (16:9 leaves little room below the tank)
-            float tapY = TapY;
+            float tapY = tapY0;
             var bar = game.CreatureBar;
             if (bar != null)
             {
                 bar.Root.GetWorldCorners(corners);
                 tapY = Mathf.Max(tapY, root.InverseTransformPoint(corners[1]).y + TapBarGap);
             }
-            tapText.rectTransform.anchoredPosition = new Vector2(0f, tapY);
+            tapText.rectTransform.anchoredPosition = new Vector2(tapText.rectTransform.anchoredPosition.x, tapY);
 
             foreach (var p in rain)
             {
@@ -447,7 +500,7 @@ namespace BlobMerge
         static void Drop(TMP_Text text, RectTransform rt, float y, float e, bool started)
         {
             text.alpha = started ? Mathf.Clamp01(e) : 0f;
-            rt.anchoredPosition = new Vector2(0f, y + DropPx * (1f - (started ? e : 0f)));
+            rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, y + DropPx * (1f - (started ? e : 0f)));
         }
 
         /// <summary>Looping 0 → 1 → 0 (ease-in-out each half) starting at <paramref name="start"/>; 0 before it.</summary>
@@ -510,7 +563,7 @@ namespace BlobMerge
 
         delegate Color Shade(Vector2 p, float aa); // p in -1..1 (y up), aa = one pixel in p units
 
-        static Sprite Make(int w, int h, Shade fn)
+        static Sprite Make(string name, int w, int h, Shade fn)
         {
             var tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
             var px = new Color[w * h];
@@ -519,12 +572,14 @@ namespace BlobMerge
                 for (int x = 0; x < w; x++)
                     px[y * w + x] = fn(new Vector2((x + 0.5f) / w * 2f - 1f, (y + 0.5f) / h * 2f - 1f), aa);
             tex.SetPixels(px);
-            tex.Apply(false, true);
-            return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f);
+            tex.Apply(false, false); // readable: the UI prefab builder saves it as a PNG
+            var sp = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f);
+            sp.name = name;
+            return sp;
         }
 
         /// <summary>Glass bubble (mock .hero): light rim + radial highlight at the upper left.</summary>
-        static Sprite BubbleSprite => bubble != null ? bubble : bubble = Make(256, 256, (p, aa) =>
+        static Sprite BubbleSprite => bubble != null ? bubble : bubble = Make("CelebrationBubble", 256, 256, (p, aa) =>
         {
             float r = p.magnitude;
             float edge = Mathf.Clamp01((1f - r) / aa);
@@ -549,7 +604,7 @@ namespace BlobMerge
         }
 
         /// <summary>Burst core (mock): white .95 → warm white .7 → faint cyan .25 → 0. Additive; alpha = burst-in.</summary>
-        static Sprite CoreSprite => core0 != null ? core0 : core0 = Make(256, 256, (p, aa) => Radial(p.magnitude, CoreStops));
+        static Sprite CoreSprite => core0 != null ? core0 : core0 = Make("CelebrationCore", 256, 256, (p, aa) => Radial(p.magnitude, CoreStops));
         static readonly (float, Color)[] CoreStops =
         {
             (0f, new Color(1f, 1f, 1f, 0.95f)), (0.25f, new Color(1f, 0.98f, 0.88f, 0.7f)),
@@ -557,14 +612,14 @@ namespace BlobMerge
         };
 
         /// <summary>Glow particle (mock): white .85 → cyan .45 → 0. Additive; alpha = its sin fade.</summary>
-        static Sprite GlowDotSprite => glowDot != null ? glowDot : glowDot = Make(64, 64, (p, aa) => Radial(p.magnitude, GlowStops));
+        static Sprite GlowDotSprite => glowDot != null ? glowDot : glowDot = Make("CelebrationGlow", 64, 64, (p, aa) => Radial(p.magnitude, GlowStops));
         static readonly (float, Color)[] GlowStops =
         {
             (0f, new Color(1f, 1f, 1f, 0.85f)), (0.4f, new Color(0.75f, 0.94f, 1f, 0.45f)), (1f, new Color(0.59f, 0.86f, 1f, 0f)),
         };
 
         /// <summary>Rising bubble (mock): light cyan ring + a small white highlight at the upper left.</summary>
-        static Sprite RiseBubbleSprite => riseBubble != null ? riseBubble : riseBubble = Make(64, 64, (p, aa) =>
+        static Sprite RiseBubbleSprite => riseBubble != null ? riseBubble : riseBubble = Make("CelebrationRisingBubble", 64, 64, (p, aa) =>
         {
             float r = p.magnitude;
             float ring = Mathf.Clamp01((1f - r) / aa) * Mathf.Clamp01((r - 0.78f) / aa);
@@ -594,8 +649,9 @@ namespace BlobMerge
                     px[y * w + x] = c;
                 }
             tex.SetPixels(px);
-            tex.Apply(false, true);
+            tex.Apply(false, false); // readable: the UI prefab builder saves it as a PNG
             var s = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f);
+            s.name = gradient ? "CelebrationRibbon" : "CelebrationRibbonShadow";
             if (gradient) capsule = s; else capsuleFlat = s;
             return s;
         }
