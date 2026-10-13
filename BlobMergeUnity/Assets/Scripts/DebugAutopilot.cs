@@ -40,6 +40,7 @@ namespace BlobMerge
             {
                 if (a[i] == "-blobauto") float.TryParse(a[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out duration);
                 if (a[i] == "-blobshot") shotPrefix = a[i + 1];
+                if (a[i] == "-blobover") float.TryParse(a[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out forceOverAt);
                 if (a[i] == "-blobpressure") float.TryParse(a[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out pressureOverride);
             }
             continueMode = System.Array.IndexOf(a, "-blobcontinue") >= 0;
@@ -48,10 +49,12 @@ namespace BlobMerge
             fillTest = System.Array.IndexOf(a, "-blobfilltest") >= 0;
             twinTest = System.Array.IndexOf(a, "-blobtwintest") >= 0;
             rapid = System.Array.IndexOf(a, "-blobrapid") >= 0;
+            ceiling = System.Array.IndexOf(a, "-blobceiling") >= 0;
             doorTest = System.Array.IndexOf(a, "-blobdoortest") >= 0;
             throwTest = System.Array.IndexOf(a, "-blobthrowtest") >= 0;
             SoftBodyWorld.SeparateDeepOverlaps = System.Array.IndexOf(a, "-blobnodeepfix") < 0;
-            doorTest |= throwTest; // same setup: scripted lane only, no bot throws
+            cornerTest = System.Array.IndexOf(a, "-blobcornertest") >= 0;
+            doorTest |= throwTest | cornerTest; // same setup: scripted lane only, no bot throws
             if (System.Array.IndexOf(a, "-blobhex") >= 0) GetComponent<GameController>().ApplyHexaPreset(); // hexagons in any scene
             if (System.Array.IndexOf(a, "-blobfish") >= 0) GetComponent<GameController>().ApplyFishPreset(); // fish bubbles in any scene
             for (int i = 0; i < a.Length - 1; i++)
@@ -125,10 +128,16 @@ namespace BlobMerge
         bool twinTest; int twinThrows; // "-blobtwintest": alternately throw a lane 2 down (no merge) / into its twin (merge)
         // "-blobrapid": fast throws, mostly sideways in the lane (into a same-valued lane blob, or at the wall doors)
         bool rapid;
+        // "-blobceiling": the user's style - bank every lane blob off the ceiling at the fish entering from the other door,
+        // back to back (random 45-80 deg up toward the far side, random power, ~2 throws/s)
+        bool ceiling;
         float nextStuckLog;
+        float forceOverAt; // "-blobover <seconds>": end the game then (game-over screen check)
         bool stuckShot;
+        bool laneBandShot;
+        static int laneBandStuck; // slow Free blobs logged up in the lane band (all games of the session)
         // "-blobdoortest": lane blobs spawned on top of each other at the wall doors (same and different values) - do they separate?
-        bool doorTest, throwTest; int doorStep;
+        bool doorTest, throwTest, cornerTest; int doorStep;
         int lastUntangles = SoftBodyWorld.Untangles;
         Blob throwBlob;
 
@@ -170,10 +179,42 @@ namespace BlobMerge
             }
         }
 
+        /// <summary>"-blobcornertest": the user's picture - a tank-sized Free piece banked back up into the top corner, on
+        /// top of a lane piece at the wall door (left), and over the middle of a lane piece against the ceiling (right).</summary>
+        void CornerTest(float t)
+        {
+            var bd = game.Board;
+            int v = game.SpawnFloor;
+            float rl = game.RadiusForTier(GameController.Tier(v * 2)) * game.laneScale;
+            float rf = game.RadiusForTier(GameController.Tier(v * 4)) * game.landedScale;
+            if (doorStep == 0 && t > 1f)
+            {
+                doorStep++;
+                // left: a banked clownfish comes down onto the lane piece at the door and its neighbour (a two-piece shelf);
+                // right: onto a single lane piece entering at the door
+                float rl1 = game.RadiusForTier(GameController.Tier(v)) * game.laneScale;
+                float xDoor = -bd.HalfW + rl, xNext = xDoor + rl + rl1 + game.blobGap;
+                game.SpawnLaneBlob(v * 2, new Vector2(xDoor, bd.LaneY), Vector2.zero, -1);
+                game.SpawnLaneBlob(v, new Vector2(xNext, bd.LaneY), Vector2.zero, -1);
+                game.SpawnFree(v * 4, new Vector2((xDoor + xNext) * 0.5f, bd.TopY - rf));
+                float rf8 = game.RadiusForTier(GameController.Tier(v * 8)) * game.landedScale;
+                game.SpawnFree(v * 8, new Vector2(bd.HalfW - rf8, bd.TopY - rf8));
+                game.SpawnLaneBlob(v * 2, new Vector2(bd.HalfW - rl * 0.55f, bd.LaneY), new Vector2(-game.lane.entrySpeed, 0f), 1);
+                Debug.Log("[BlobMerge] corner test: spawned");
+            }
+            if ((doorStep == 1 && t > 2.5f) || (doorStep == 2 && t > 6f))
+            {
+                doorStep++;
+                foreach (var b in game.Blobs) Debug.Log($"[BlobMerge] corner test t={t:F1}: {Describe(b)} touches=[{Touches(b)}]");
+                if (!string.IsNullOrEmpty(shotPrefix)) ScreenCapture.CaptureScreenshot(shotPrefix + "corner" + doorStep + ".png");
+            }
+        }
+
         void DoorTest(float t)
         {
             if (!doorTest) return;
             if (throwTest) { ThrowTest(t); return; }
+            if (cornerTest) { CornerTest(t); return; }
             var bd = game.Board;
             int v = game.SpawnFloor * 4; // clownfish
             float r = game.RadiusForTier(GameController.Tier(v)) * game.laneScale;
@@ -216,6 +257,29 @@ namespace BlobMerge
             $"mass={b.Body.MassScale:F1} job={game.InMergeJob(b)} st={b.StateTime:F1} scale={Mathf.Sqrt(b.Body.AreaScale):F2} " +
             $"grow={b.Growing} landed={b.Landed}";
 
+        /// <summary>Blobs within reach of b (centre offset from b, state, value, overlap depth = radius sum - distance).</summary>
+        string Touches(Blob b)
+        {
+            var sb = new System.Text.StringBuilder();
+            var bd = game.Board;
+            if (b.Body.Max.y > bd.TopY - 0.05f) sb.Append("CEILING ");
+            if (b.Body.Min.x < -bd.HalfW + 0.05f) sb.Append("WALL-L ");
+            if (b.Body.Max.x > bd.HalfW - 0.05f) sb.Append("WALL-R ");
+            foreach (var o in game.Blobs)
+            {
+                if (o == b) continue;
+                Vector2 d = o.Body.Center - b.Body.Center;
+                float depth = b.CurrentRadius + o.CurrentRadius - d.magnitude;
+                if (depth > -0.15f)
+                {
+                    int inside = 0; // b's skin points inside o: a hooked/folded pair has many
+                    for (int k = 0; k < b.Body.N; k++) if (o.Body.Contains(b.Body.P[k])) inside++;
+                    sb.Append($"{o.Value}{o.State.ToString()[0]} off=({d.x:F2},{d.y:F2}) depth={depth:F2} in={o.Body.Contains(b.Body.Center) || b.Body.Contains(o.Body.Center)} ptsIn={inside}; ");
+                }
+            }
+            return sb.ToString();
+        }
+
         /// <summary>Tank fill: area of the Free blobs below the danger line / the tank area below it.</summary>
         float TankFill()
         {
@@ -240,14 +304,26 @@ namespace BlobMerge
                                 b.Body.Velocity.sqrMagnitude < 1.5f && b.StateTime > 0.5f;
                 bool lateMerge = b.State == BlobState.Merging && b.StateTime > 0.3f;
                 bool offLane = b.State == BlobState.Lane && b.StateTime > 1f && Mathf.Abs(b.Body.Center.y - bd.LaneY) > 0.5f;
+                bool inLaneBand = slowHigh && b.State == BlobState.Free && b.Body.Center.y > bd.WaterY - 1f; // the user's bug: up among the lane
+                if (inLaneBand)
+                {
+                    laneBandStuck++;
+                    if (ceiling && nextThrow < t + 4f) { nextThrow = t + 4f; Debug.Log($"[BlobMerge] LANEBAND hands off 4 s t={t:F1}"); } // does it come down by itself?
+                }
+                if (inLaneBand && !laneBandShot && !string.IsNullOrEmpty(shotPrefix))
+                {
+                    laneBandShot = true; // one per game
+                    ScreenCapture.CaptureScreenshot(shotPrefix + "laneband" + gameNo + ".png");
+                }
                 if (slowHigh && !stuckShot && !string.IsNullOrEmpty(shotPrefix))
                 {
                     stuckShot = true; // one per game (scene load)
                     ScreenCapture.CaptureScreenshot(shotPrefix + "stuck" + gameNo + ".png");
                 }
                 if (slowHigh || lateMerge || offLane)
-                    Debug.Log($"[BlobMerge] STUCK t={t:F1} {(slowHigh ? "slowHigh " : "")}{(lateMerge ? "lateMerge " : "")}{(offLane ? "offLane " : "")}" +
-                              $"{Describe(b)} laneY={bd.LaneY:F2} dangerY={bd.DangerY:F2} halfW={bd.HalfW:F2} fill={TankFill():P0}");
+                    Debug.Log($"[BlobMerge] STUCK t={t:F1} {(inLaneBand ? "LANEBAND " : "")}{(slowHigh ? "slowHigh " : "")}{(lateMerge ? "lateMerge " : "")}{(offLane ? "offLane " : "")}" +
+                              $"{Describe(b)} r={b.CurrentRadius:F2} laneY={bd.LaneY:F2} dangerY={bd.DangerY:F2} halfW={bd.HalfW:F2} fill={TankFill():P0} " +
+                              $"touches=[{Touches(b)}]");
             }
         }
         bool fillTest, fillLogged;
@@ -257,6 +333,7 @@ namespace BlobMerge
         float speed = 1f;
         // calibration (spec §0b): game number in this session, periodic difficulty log + "late" screenshot
         static int gameNo;
+        bool overUiShot;
         float nextDifficultyLog;
         int ticksAtLog;
         float tAtLog;
@@ -322,13 +399,14 @@ namespace BlobMerge
             winShotIdx++;
         }
 
-        /// <summary>"-blobfilltest": drops the whole 2048…1 chain (everything a 4096 attempt must hold) and measures it.</summary>
+        /// <summary>"-blobfilltest": drops the chain a whale attempt must hold (narwhal down to the last bar's first creature) and measures it.</summary>
         void FillTest(float t)
         {
             var bd = game.Board;
-            while (fillSpawned < 12 && t > 0.5f + fillSpawned * 0.8f)
+            int chain = ProgressionMath.TopTier - ProgressionMath.MaxWindowStart(game.progression.WindowSize);
+            while (fillSpawned < chain && t > 0.5f + fillSpawned * 0.8f)
             {
-                int v = 2048 >> fillSpawned;
+                int v = 1 << (ProgressionMath.TopTier - 1 - fillSpawned);
                 float x = ((fillSpawned % 3) - 1) * bd.HalfW * 0.5f;
                 game.SpawnFree(v, new Vector2(x, bd.DangerY + 0.3f));
                 fillSpawned++;
@@ -397,7 +475,7 @@ namespace BlobMerge
 
         void LogSummary()
         {
-            Debug.Log($"[BlobMerge] summary: laneMerges={laneMerges} pileMerges={pileMerges} maxStretchKicks={maxKicks} throws={throws} minGap={MinGap():F3} untangles={SoftBodyWorld.Untangles}");
+            Debug.Log($"[BlobMerge] summary: laneMerges={laneMerges} pileMerges={pileMerges} maxStretchKicks={maxKicks} throws={throws} minGap={MinGap():F3} untangles={SoftBodyWorld.Untangles} laneBandStuck={laneBandStuck}");
             LogQueue();
         }
 
@@ -483,13 +561,14 @@ namespace BlobMerge
                         phase = Phase.Dragging;
                         phaseT = 0f;
                     }
-                    nextThrow = t + (rapid ? 0.6f : 1.25f);
+                    nextThrow = t + (ceiling ? 0.05f : rapid ? 0.6f : 1.25f);
                 }
                 else if (phase == Phase.Dragging)
                 {
                     phaseT += Time.deltaTime;
-                    aim.SimPos = Vector2.Lerp(from, to, Mathf.SmoothStep(0f, 1f, phaseT / 0.4f));
-                    if (phaseT > 0.5f) { aim.SimUp = true; phase = Phase.Idle; }
+                    float dragT = ceiling ? 0.2f : 0.4f;
+                    aim.SimPos = Vector2.Lerp(from, to, Mathf.SmoothStep(0f, 1f, phaseT / dragT));
+                    if (phaseT > dragT + 0.1f) { aim.SimUp = true; phase = Phase.Idle; }
                 }
             }
 
@@ -531,6 +610,7 @@ namespace BlobMerge
             TrackShake();
             TrackSquash();
             TrackRebound();
+            if (forceOverAt > 0f && t >= forceOverAt && !game.IsGameOver) game.EndGameNow(); // "-blobover <s>": UI check
 
             if (game.IsGameOver)
             {
@@ -546,6 +626,11 @@ namespace BlobMerge
                         Debug.Log($"[BlobMerge] game {gameNo}: game over t={t:F1}s R={game.lane.GameBest} throws={game.lane.Shots} " +
                                   $"highest={1 << game.progression.Highest} window={game.progression.WindowStart} D={game.lane.Difficulty:F2} " +
                                   $"locks={game.lane.Locks} refusals={game.lane.Refusals}");
+                }
+                else if (!overUiShot && Time.unscaledTime - overAt > 0.7f)
+                {
+                    overUiShot = true; // the game-over popup after its pop-in
+                    if (!string.IsNullOrEmpty(shotPrefix)) ScreenCapture.CaptureScreenshot(shotPrefix + (continueMode ? "overui" + gameNo : "overui") + ".png");
                 }
                 else if (Time.unscaledTime - overAt > 1f)
                 {
@@ -745,11 +830,39 @@ namespace BlobMerge
             return false;
         }
 
+        /// <summary>"-blobceiling": any lane blob, thrown 45-80 deg up toward the far wall (it banks off the ceiling back
+        /// into the lane / at the door on the other side), random power.</summary>
+        bool CeilingShot()
+        {
+            var lanes = new List<Blob>();
+            foreach (var l in game.Blobs) if (l.State == BlobState.Lane && l.StateTime > 0.15f) lanes.Add(l);
+            if (lanes.Count == 0) return false;
+            Blob pick = lanes[Random.Range(0, lanes.Count)];
+            if (Random.value < 0.6f) foreach (var l in lanes) if (l.StateTime < pick.StateTime) pick = l; // the one that just came in
+            from = pick.Body.Center;
+            var bd = game.Board;
+            float side = from.x > 0.3f ? -1f : from.x < -0.3f ? 1f : (Random.value < 0.5f ? -1f : 1f); // toward the far side
+            Vector2 dir;
+            float roll = Random.value;
+            if (roll < 0.5f) // bank off the ceiling half way to the other door: comes down on the fish entering there
+                dir = (new Vector2((from.x + side * bd.HalfW * Random.Range(0.6f, 1f)) * 0.5f, bd.TopY) - from).normalized;
+            else
+            {
+                float ang = (roll < 0.85f ? Random.Range(45f, 80f) : Random.Range(80f, 89f)) * Mathf.Deg2Rad;
+                dir = new Vector2(side * Mathf.Cos(ang), Mathf.Sin(ang));
+            }
+            float dead = aim.minDrag + pick.CurrentRadius * 0.6f;
+            to = from + dir * (dead + (Random.value < 0.5f ? 1.1f : Random.Range(0.15f, 1f)) * (aim.maxDrag + 0.3f)); // half at full power
+            throws++;
+            return true;
+        }
+
         /// <summary>Prefer throwing a lane blob at a resting blob with the same value; otherwise random.</summary>
         bool ChooseShot()
         {
             Blob pick = null, target = null;
             if (twinTest) return TwinShot();
+            if (ceiling) return CeilingShot();
             foreach (var l in game.Blobs)
             {
                 if (l.State != BlobState.Lane) continue;

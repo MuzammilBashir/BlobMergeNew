@@ -39,6 +39,8 @@ namespace BlobMerge
 
         public BlobState State;
         public float StateTime;      // seconds in current state
+        public float SlowInLane;     // Free: seconds spent slow with its top up in the lane band
+        public bool DropThrough;     // Free: sinking through the lane (the queue never holds a blob up)
         public float AreaTarget = 1f;
         public float Flash;          // 0..1 white flash
         public bool Selected;

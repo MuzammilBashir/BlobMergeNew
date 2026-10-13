@@ -27,7 +27,11 @@ namespace BlobMerge
         const float GlowDur = 0.9f, GlowSize = 180f, RingDur = 0.6f, SparkDur = 0.7f, SparkSize = 15f, SparkDist = 78f;
         const int Sparks = 8;
 
-        static readonly Color Rim = new Color(0.78f, 0.94f, 1f, 0.75f), Glass = new Color(0.10f, 0.32f, 0.58f, 0.92f);
+        // user's bar reference (2026-10-13): purple path with a white border (20 % thinner than the reference's), round
+        // icons with a thin navy edge + white ring; locked creatures are bluish-grey silhouettes, the next unlock a green ring
+        static readonly Color Edge = MeshUtil.Hex("14306B"), Ring = MeshUtil.Hex("FBF6EC"), NextRing = MeshUtil.Hex("5FD43A"),
+            Open = MeshUtil.Hex("073280"), Locked = MeshUtil.Hex("073280"), Shadow = MeshUtil.Hex("7E92C4");
+        const float EdgePx = 1.5f, RingPx = 3f, NextRingPx = 5f;
 
         GameController game;
         Canvas canvas;
@@ -35,7 +39,7 @@ namespace BlobMerge
         TMP_Text tag;
         float clock, tagT = -1f;
 
-        class Icon { public int tier; public RectTransform rt; public CanvasGroup group; public float popT = -1f; }
+        class Icon { public int tier; public RectTransform rt; public CanvasGroup group; public float popT = -1f; public bool open; public Image ring, fill, fish; }
         readonly Dictionary<int, Icon> icons = new Dictionary<int, Icon>();
         Icon leaving, entering;
         int shownStart = -1;
@@ -74,8 +78,8 @@ namespace BlobMerge
             NestedCanvas(go); // the animated bar rebuilds its own batch, not the whole HUD canvas
 
             // the path: a dark outer stroke under a blue inner one, round caps and joins
-            Stroke(v.root, "PathOuter", MeshUtil.Hex("0A1836"), OuterStroke);
-            Stroke(v.root, "PathInner", MeshUtil.Hex("1F5A96"), InnerStroke);
+            Stroke(v.root, "PathOuter", MeshUtil.Hex("FBF6EC"), OuterStroke);
+            Stroke(v.root, "PathInner", MeshUtil.Hex("5660A8"), InnerStroke);
             v.iconLayer = Layer(v.root, "Icons");
             v.burstLayer = Layer(v.root, "Bursts");
 
@@ -113,7 +117,7 @@ namespace BlobMerge
 
         static void Stroke(RectTransform parent, string name, Color col, float width)
         {
-            var s = new GameObject(name, typeof(RectTransform)).AddComponent<PathStroke>();
+            var s = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer)).AddComponent<PathStroke>(); // explicit: the Editor reported PathOuter without one (no draw)
             s.rectTransform.SetParent(parent, false);
             s.rectTransform.sizeDelta = new Vector2(Width, Height); // real rect (a zero-size one may be culled on Android); points stay in local units
             s.raycastTarget = false;
@@ -147,14 +151,62 @@ namespace BlobMerge
 
         Icon MakeIcon(int tier)
         {
-            var ring = Img(iconLayer, "Creature" + tier, UiSprites.Circle, Rim, IconSize);
-            Img(ring.rectTransform, "Glass", UiSprites.Circle, Glass, IconSize - 9f);
-            var fish = Img(ring.rectTransform, "Fish", game.FishSprite(tier), Color.white, IconSize * 0.84f);
-            fish.preserveAspect = true;
-            var icon = new Icon { tier = tier, rt = ring.rectTransform, group = ring.gameObject.AddComponent<CanvasGroup>() };
+            var edge = Img(iconLayer, "Creature" + tier, UiSprites.Circle, Edge, IconSize);
+            var icon = new Icon { tier = tier, rt = edge.rectTransform, group = edge.gameObject.AddComponent<CanvasGroup>() };
+            icon.ring = Img(icon.rt, "Ring", UiSprites.Circle, Ring, IconSize - 2f * EdgePx);
+            icon.fill = Img(icon.rt, "Fill", UiSprites.Circle, Open, IconSize - 2f * (EdgePx + RingPx));
+            icon.fish = Img(icon.rt, "Fish", null, Color.white, IconSize * 0.8f);
+            icon.fish.preserveAspect = true;
             icons[tier] = icon;
+            // a creature whose fly-in is still under way stays a silhouette until its pop
+            SetOpen(icon, tier <= game.progression.Highest && !FlightWaitingFor(tier));
             iconsAnimating = true;
             return icon;
+        }
+
+        /// <summary>Coloured (made at least once, ever) or a bluish-grey silhouette; then re-marks the next unlock.</summary>
+        void SetOpen(Icon icon, bool open)
+        {
+            icon.open = open;
+            icon.fish.sprite = open ? game.FishSprite(icon.tier) : Silhouette(icon.tier);
+            icon.fish.color = open ? Color.white : Shadow;
+            icon.fill.color = open ? Open : Locked;
+            int next = int.MaxValue;
+            foreach (var i in icons.Values) if (!i.open && i.tier < next) next = i.tier;
+            foreach (var i in icons.Values)
+            {
+                bool n = i.tier == next;
+                i.ring.color = n ? NextRing : Ring;
+                i.fill.rectTransform.sizeDelta = Vector2.one * (IconSize - 2f * (EdgePx + (n ? NextRingPx : RingPx)));
+            }
+        }
+
+        static readonly Dictionary<int, Sprite> silhouettes = new Dictionary<int, Sprite>();
+
+        /// <summary>The creature's shape in white (alpha kept), tinted by the Image. Read back through a RenderTexture
+        /// because the fish textures aren't CPU-readable.</summary>
+        Sprite Silhouette(int tier)
+        {
+            if (silhouettes.TryGetValue(tier, out var s) && s != null) return s;
+            var src = game.FishSprite(tier);
+            if (src == null) return null;
+            var f = src.textureRect; // tight-packed sprites can have fractional rects
+            var r = new RectInt(Mathf.RoundToInt(f.x), Mathf.RoundToInt(f.y), Mathf.FloorToInt(f.width), Mathf.FloorToInt(f.height));
+            var rt = RenderTexture.GetTemporary(src.texture.width, src.texture.height, 0, RenderTextureFormat.ARGB32);
+            Graphics.Blit(src.texture, rt);
+            var prev = RenderTexture.active;
+            RenderTexture.active = rt;
+            var tex = new Texture2D(r.width, r.height, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            tex.ReadPixels(new Rect(r.x, r.y, r.width, r.height), 0, 0);
+            RenderTexture.active = prev;
+            RenderTexture.ReleaseTemporary(rt);
+            var px = tex.GetPixels32();
+            for (int i = 0; i < px.Length; i++) px[i] = new Color32(255, 255, 255, px[i].a);
+            tex.SetPixels32(px);
+            tex.Apply(false, true);
+            s = Sprite.Create(tex, new Rect(0, 0, r.width, r.height), new Vector2(0.5f, 0.5f), src.pixelsPerUnit);
+            silhouettes[tier] = s;
+            return s;
         }
 
         /// <summary>The bar's last creature was made again (not a first-ever one, so no fly-in): shift after the usual delay.</summary>
@@ -169,6 +221,7 @@ namespace BlobMerge
             f.t = 0f;
             f.shiftAfter = shiftAfter;
             f.fish.sprite = game.FishSprite(tier);
+            if (icons.TryGetValue(tier, out var slot)) SetOpen(slot, false);
             f.rt.gameObject.SetActive(true);
             f.rt.SetAsLastSibling();
             Camera uiCam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
@@ -205,7 +258,7 @@ namespace BlobMerge
 
         void Pop(Vector2 slot, Icon icon)
         {
-            if (icon != null) { icon.popT = 0f; iconsAnimating = true; }
+            if (icon != null) { icon.popT = 0f; iconsAnimating = true; if (!icon.open && icon.tier <= game.progression.Highest) SetOpen(icon, true); }
             var b = burstPool.Count > 0 ? burstPool.Pop() : NewBurst();
             b.t = 0f;
             b.rt.anchoredPosition = slot;

@@ -5,8 +5,8 @@ namespace BlobMerge
     /// <summary>Pure maths for the Fish creature bar (covered by <see cref="SelfTests"/>).</summary>
     public static class ProgressionMath
     {
-        /// <summary>Highest creature tier (4096, the orca).</summary>
-        public const int TopTier = 12;
+        /// <summary>Highest creature tier (65536, the whale).</summary>
+        public const int TopTier = 16;
 
         /// <summary>A creature never made before.</summary>
         public static bool IsNewFish(int tier, int highest) => tier > highest;
@@ -22,7 +22,7 @@ namespace BlobMerge
         /// <summary>Smallest lane value while the bar starts at <paramref name="windowStart"/>: the dropped tiers never spawn.</summary>
         public static int SpawnFloor(int windowStart) => 1 << Mathf.Clamp(windowStart, 0, TopTier);
 
-        /// <summary>Largest valid window start (the bar's last creature is the orca).</summary>
+        /// <summary>Largest valid window start (the bar's last creature is the whale).</summary>
         public static int MaxWindowStart(int windowSize) => Mathf.Max(0, TopTier + 1 - windowSize);
     }
 }

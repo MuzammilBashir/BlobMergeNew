@@ -15,6 +15,7 @@ namespace BlobMerge
         readonly Transform root;
         readonly MeshRenderer[] doors = new MeshRenderer[2];
         readonly float[] doorFlash = new float[2];
+        SpriteRenderer plate;
         Mesh liveMesh;               // water band + wave line + bubbles + danger bar (rebuilt each frame)
         float dangerLevel;
         readonly List<Vector3> lv = new List<Vector3>(2048);
@@ -84,6 +85,16 @@ namespace BlobMerge
             }
         }
 
+        /// <summary>Scales the painted backdrop to cover the camera view (+5 % for the screen shake).</summary>
+        public void FitPlate(Camera cam)
+        {
+            if (plate == null) return;
+            Vector2 size = plate.sprite.bounds.size;
+            float h = cam.orthographicSize * 2f * 1.05f, w = h * cam.aspect;
+            plate.transform.localScale = Vector3.one * Mathf.Max(w / size.x, h / size.y);
+            plate.transform.position = new Vector3(cam.transform.position.x, cam.transform.position.y, 0f);
+        }
+
         /// <summary>Container outline grown outward by 'grow', with rounded corners.</summary>
         List<Vector2> Outline(float grow, Vector2 offset = default)
         {
@@ -126,6 +137,14 @@ namespace BlobMerge
             if (Th.backdrop == BackdropStyle.Gradient) AddGradient(v, c, t, 34f, 44f);
             else MeshUtil.AddFan(v, c, t, new Vector2(0, 1f), big, BgCenter, BgEdge);
             Add("Backdrop", MeshUtil.Build(v, c, t, "Backdrop"), -20);
+            if (Th.backgroundPlate != null)
+            {
+                var sr = new GameObject("BackdropPlate").AddComponent<SpriteRenderer>();
+                sr.transform.SetParent(root, false);
+                sr.sprite = Th.backgroundPlate;
+                sr.sortingOrder = -19; // over the gradient, under the space layer and the frame
+                plate = sr;
+            }
             v.Clear(); c.Clear(); t.Clear();
 
             // every frame layer is a band around the field opening (not a filled slab), so a translucent field is glass
@@ -133,13 +152,28 @@ namespace BlobMerge
             // soft drop shadow under the container
             MeshUtil.AddBand(v, c, t, Outline(ft + 0.35f, new Vector2(0, -0.35f)), hole, Th.frameShadow);
             MeshUtil.AddBand(v, c, t, Outline(ft + 0.15f, new Vector2(0, -0.25f)), hole, Th.frameShadow);
-            // bevelled tube frame: dark base, main body, lighter top-left highlight
-            MeshUtil.AddBand(v, c, t, Outline(ft), hole, FrameDark);
-            MeshUtil.AddBand(v, c, t, Outline(ft - 0.07f, new Vector2(0f, 0.03f)), hole, FrameMain);
-            MeshUtil.AddBand(v, c, t, Outline(ft * 0.55f, new Vector2(-0.02f, 0.06f)), hole, FrameHighlight);
-            MeshUtil.AddBand(v, c, t, Outline(ft * 0.38f, new Vector2(0f, 0.02f)), hole, FrameMain);
-            // dark inner lip, then the vignetted field
-            MeshUtil.AddBand(v, c, t, Outline(0.08f), hole, InnerLip);
+            if (Th.glossyFrame)
+            {
+                // glass tube (Branding frame pick, rim profile outline 15 % / tube 48 % / bevel 29 % / inner edge 8 %):
+                // navy outline, cyan tube with a white crescent top-left, teal bevel, dark inner edge
+                MeshUtil.AddBand(v, c, t, Outline(ft), hole, Th.glossOutline);
+                MeshUtil.AddBand(v, c, t, Outline(ft * 0.85f), hole, Th.glossTubeEdge);
+                MeshUtil.AddBand(v, c, t, Outline(ft * 0.80f, new Vector2(-0.015f, 0.03f)), hole, Th.glossHighlight);
+                MeshUtil.AddBand(v, c, t, Outline(ft * 0.75f, new Vector2(0.01f, -0.01f)), hole, Th.glossTube);
+                MeshUtil.AddBand(v, c, t, Outline(ft * 0.37f), hole, Th.glossBevel);
+                MeshUtil.AddBand(v, c, t, Outline(ft * 0.08f), hole, Th.glossBevelDark);
+            }
+            else
+            {
+                // bevelled tube frame: dark base, main body, lighter top-left highlight
+                MeshUtil.AddBand(v, c, t, Outline(ft), hole, FrameDark);
+                MeshUtil.AddBand(v, c, t, Outline(ft - 0.07f, new Vector2(0f, 0.03f)), hole, FrameMain);
+                MeshUtil.AddBand(v, c, t, Outline(ft * 0.55f, new Vector2(-0.02f, 0.06f)), hole, FrameHighlight);
+                MeshUtil.AddBand(v, c, t, Outline(ft * 0.38f, new Vector2(0f, 0.02f)), hole, FrameMain);
+                // dark inner lip
+                MeshUtil.AddBand(v, c, t, Outline(0.08f), hole, InnerLip);
+            }
+            // the vignetted field
             MeshUtil.AddFan(v, c, t, new Vector2(0f, (FloorY + WaterY) * 0.5f), Outline(0f), FieldCenter, FieldEdge);
 
             // optional bumpers

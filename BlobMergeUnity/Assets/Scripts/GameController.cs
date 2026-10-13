@@ -124,10 +124,12 @@ namespace BlobMerge
         [Header("Fish bubble (Fish scene)")]
         [Tooltip("Fish width as a fraction of the bubble's diameter.")]
         [Range(0.3f, 1.2f)] public float fishSize = 0.74f;
-        [Tooltip("Fish scene: bubble growth per value step up to the whale (512). 0.115 = the original look (= Radius Per Tier; spec §0b restored it). Other scenes use Radius Per Tier.")]
-        public float fishRadiusPerTier = 0.115f;
-        [Tooltip("Fish scene: growth per step above the whale (1024, 2048, 4096). Visibly bigger than the whale but below the regular step, so a 4096 attempt fits the tank.")]
-        public float fishBigRadiusPerTier = 0.05f;
+        [Tooltip("Fish scene: bubble growth per creature up to Fish Big From Tier (17 creatures, 2026-10-13). Other scenes use Radius Per Tier.")]
+        public float fishTierStep = 0.075f;
+        [Tooltip("Fish scene: from this tier on (10 = dolphin) the bubbles grow by Fish Big Tier Step, so the whale (16) still fits the tank.")]
+        public int fishBigFromTier = 10;
+        [Tooltip("Fish scene: growth per creature from Fish Big From Tier on (dolphin -> whale).")]
+        public float fishBigTierStep = 0.04f;
         [Tooltip("Show the value number on fish bubbles. Off = the creature alone tells the value; merges still pop \"+N\".")]
         public bool fishShowNumbers = false;
         [Tooltip("How far below the bubble centre the number sits (fraction of the radius).")]
@@ -194,6 +196,10 @@ namespace BlobMerge
         [Header("Throw")]
         [Tooltip("Seconds a thrown blob passes through the other lane blobs, so neighbours can't knock it off its aim.")]
         public float launchPassThroughTime = 0.25f;
+        [Tooltip("A thrown blob slower than this (units/s) with its top up in the lane band...")]
+        public float dropThroughSpeed = 1.2f;
+        [Tooltip("...for this long (s) sinks through the lane blobs instead of resting on them.")]
+        public float dropThroughDelay = 0.25f;
 
         [Header("Juice")]
         public float launchStretch = 0.22f;
@@ -209,6 +215,8 @@ namespace BlobMerge
         [Tooltip("How fast shakes die out (per second).")]
         public float shakeDecay = 1.8f;
         public float shakeFrequency = 32f;
+        [Tooltip("Multiplies every camera shake (move and roll). 0.25 = a quarter of the tuned values (user 2026-10-13).")]
+        [Range(0f, 1f)] public float shakeScale = 0.25f;
         [Tooltip("Shake when two blobs merge in the container (pile).")]
         [Range(0f, 1f)] public float pileMergeShake = 0.45f;
         [Tooltip("Extra pile-merge shake per value tier (a 256 merge shakes harder than a 4).")]
@@ -266,6 +274,7 @@ namespace BlobMerge
         int score, best;
         float dangerTimer;
         bool gameOver;
+        bool splashing; // the launch splash covers the screen: no aiming yet
         float gameOverAt;
         Vector2 aimDir;
         float aimPower;
@@ -297,7 +306,7 @@ namespace BlobMerge
 
         public static int Tier(int value) => Mathf.RoundToInt(Mathf.Log(Mathf.Max(1, value), 2f));
         public float RadiusForTier(int tier) => FishMode
-            ? Mathf.Min(maxRadius, baseRadius + fishRadiusPerTier * Mathf.Min(tier, 9) + fishBigRadiusPerTier * Mathf.Max(0, tier - 9))
+            ? Mathf.Min(maxRadius, baseRadius + fishTierStep * Mathf.Min(tier, fishBigFromTier) + fishBigTierStep * Mathf.Max(0, tier - fishBigFromTier))
             : Mathf.Min(maxRadius, baseRadius + radiusPerTier * tier);
         public Color ColorForTier(int tier)
         {
@@ -344,10 +353,10 @@ namespace BlobMerge
         Material fishMaterial;
         public Material FishMaterial => fishMaterial != null ? fishMaterial : (fishMaterial = Resources.Load<Material>("Materials/FishSprite"));
 
-        /// <summary>Fish for a value: Resources/Fish/fish_00 (1) … fish_12 (4096+).</summary>
+        /// <summary>Fish for a value: Resources/Fish/fish_00 (1) … fish_16 (65536+).</summary>
         public Sprite FishSprite(int tier)
         {
-            fishSprites ??= new Sprite[13];
+            fishSprites ??= new Sprite[ProgressionMath.TopTier + 1];
             int i = Mathf.Clamp(tier, 0, fishSprites.Length - 1);
             if (fishSprites[i] == null)
             {
@@ -440,6 +449,7 @@ namespace BlobMerge
             BuildUI();
             progressionReady = ProgressionOn && bar != null;
             SetupAim();
+            if (splashing) aim.InputEnabled = false;
             lane.Init(this, board);
         }
 
@@ -594,6 +604,7 @@ namespace BlobMerge
             float top = boardHeight * 0.5f + hudTop, bot = -boardHeight * 0.5f - bottom;
             camBase = new Vector3(0, (top + bot) * 0.5f, -10);
             cam.transform.position = camBase;
+            board.FitPlate(cam);
         }
 
         // ================================================================== blobs
@@ -609,6 +620,7 @@ namespace BlobMerge
         {
             var b = GetBlob();
             b.Init(this, value, pos, startArea, nextId++);
+            b.DropThrough = false; b.SlowInLane = 0f; // pooled blobs
             blobs.Add(b);
             world.Bodies.Add(b.Body);
             return b;
@@ -789,7 +801,8 @@ namespace BlobMerge
             SaveProgressIfDirty(); // new fish from last frame's physics
             if (gameOver)
             {
-                if (Input.GetMouseButtonDown(0) && Time.unscaledTime > gameOverAt + 0.8f) Restart();
+                // the Fish popup restarts from its Play again button only
+                if (hud.playAgainButton == null && Input.GetMouseButtonDown(0) && Time.unscaledTime > gameOverAt + 0.8f) Restart();
             }
             else if (celebrationFrozen)
             {
@@ -829,8 +842,8 @@ namespace BlobMerge
             foreach (var b in blobs) b.TickVisual(dt);
             board.Tick(GameTime.UnscaledDelta);
 
-            fx.MaxShakeOffset = shakeMaxOffset;
-            fx.MaxShakeAngle = shakeMaxAngle;
+            fx.MaxShakeOffset = shakeMaxOffset * shakeScale;
+            fx.MaxShakeAngle = shakeMaxAngle * shakeScale;
             fx.ShakeDecay = shakeDecay;
             fx.ShakeFrequency = shakeFrequency;
             cam.transform.position = camBase + (Vector3)fx.ShakeOffset;
@@ -845,7 +858,9 @@ namespace BlobMerge
             {
                 b.TickPhysics(h);
                 if (b.Growing && b.State == BlobState.Free) TickGrow(b);
-                if (b.Body.IgnoreGroup == LaneGroup && b.StateTime > launchPassThroughTime) b.Body.IgnoreGroup = -1;
+                if (b.State == BlobState.Free) TickDropThrough(b, h);
+                if (b.DropThrough) b.Body.IgnoreGroup = LaneGroup;
+                else if (b.Body.IgnoreGroup == LaneGroup && b.StateTime > launchPassThroughTime) b.Body.IgnoreGroup = -1;
                 if (b.State == BlobState.Lane || b.State == BlobState.Aiming)
                     lane.ApplyForces(b, b.State == BlobState.Aiming ? aimDir : Vector2.zero, b.State == BlobState.Aiming ? aimPower : 0f,
                                      LaneAutoMerge ? blobs : null); // null = no same-value magnet
@@ -1129,6 +1144,18 @@ namespace BlobMerge
             hud.SetBest(best);
         }
 
+        /// <summary>The lane bumps thrown blobs but is a floating queue, not a shelf: a Free blob that stays slow with its top
+        /// up in the lane band (banked off the ceiling onto the spring-held lane blobs, wedged at a wall door) sinks through
+        /// the lane until it is below it - it used to rest there above the danger line (false game over, 2026-10-12).</summary>
+        void TickDropThrough(Blob b, float h)
+        {
+            bool inBand = b.Body.Max.y > board.WaterY;
+            if (!inBand) { b.DropThrough = false; b.SlowInLane = 0f; return; }
+            b.SlowInLane = b.StateTime > launchPassThroughTime && b.Body.Velocity.sqrMagnitude < dropThroughSpeed * dropThroughSpeed
+                ? b.SlowInLane + h : 0f;
+            if (b.SlowInLane > dropThroughDelay) b.DropThrough = true;
+        }
+
         // ================================================================== game over
         void CheckDanger()
         {
@@ -1142,6 +1169,9 @@ namespace BlobMerge
             board.SetDanger(Mathf.Clamp01(dangerTimer / dangerHoldSeconds * 2f));
             if (dangerTimer >= dangerHoldSeconds) EndGame();
         }
+
+        /// <summary>Test hook (bot "-blobover"): the normal game over, now.</summary>
+        public void EndGameNow() => EndGame();
 
         void EndGame()
         {
@@ -1165,6 +1195,12 @@ namespace BlobMerge
             hud.SetOffsetY(hudOffsetY);
             hud.SetScore(score, false);
             hud.SetBest(best);
+            splashing = true;
+            FishUi.Apply(this, hud, Theme, !AdTake, () =>
+            {
+                splashing = false;
+                if (aim != null) aim.InputEnabled = true;
+            });
             if (ProgressionOn)
             {
                 bar = CreatureBarView.Create(this, hud);

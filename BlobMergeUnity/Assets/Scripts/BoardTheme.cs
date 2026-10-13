@@ -142,6 +142,30 @@ namespace BlobMerge
             new Color32(0xF2, 0xF2, 0xF2, 0xFF), // 512+ white
         };
 
+        [Header("Glossy board (Fish Fantasy art pass; off = the original bevelled frame)")]
+        [Tooltip("Painted backdrop behind the tank (covers the screen; replaces the gradient/vignette).")]
+        public Sprite backgroundPlate;
+        [Tooltip("Glass-tube frame: navy outline, cyan tube with a white top-left highlight, teal inner bevel.")]
+        public bool glossyFrame;
+        public Color glossOutline = new Color32(0x00, 0x1B, 0x5C, 0xFF);
+        public Color glossTubeEdge = new Color32(0x02, 0xC9, 0xED, 0xFF);
+        public Color glossTube = new Color32(0x11, 0xE3, 0xFD, 0xFF);
+        public Color glossHighlight = new Color32(0xD8, 0xFB, 0xFF, 0xFF);
+        public Color glossBevel = new Color32(0x00, 0x5A, 0x84, 0xFF);
+        public Color glossBevelDark = new Color32(0x00, 0x2B, 0x56, 0xFF);
+
+        [Header("UI art (empty = the procedural HUD; Fish: Assets/Art/UI)")]
+        [Tooltip("Score panel art (replaces the rounded panel; its SCORE tab label stays).")]
+        public Sprite uiScorePlate;
+        public Sprite uiCrown;
+        public Sprite uiSettingsButton;
+        [Tooltip("Game-over popup card (set = the Fish fail screen: score, high score, Play again button).")]
+        public Sprite uiPopup;
+        public Sprite uiButton;
+        [Tooltip("Splash shown once per app launch (full-screen art + logo + Loading...).")]
+        public Sprite splashBackground;
+        public Sprite splashLogo;
+
         static BoardTheme fallback;
         /// <summary>The original purple look (used when a scene has no theme assigned).</summary>
         public static BoardTheme Default => fallback != null ? fallback : (fallback = CreateInstance<BoardTheme>());

@@ -21,6 +21,8 @@ namespace BlobMerge
         public Button settingsButton;
         public GameObject gameOverPanel;
         public TMP_Text gameOverText;
+        [Tooltip("Optional: set = game over restarts only from this button (no tap-anywhere).")]
+        public Button playAgainButton;
 
         [Header("Style source for in-game text")]
         [Tooltip("Blob numbers and floating +score texts copy this text's font, material (outline), colour and Bold/Italic. " +
