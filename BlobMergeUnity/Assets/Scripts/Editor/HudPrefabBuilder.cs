@@ -62,7 +62,7 @@ namespace BlobMerge.EditorTools
         }
 
         /// <summary>Writes a generated sprite to a PNG asset (kept if it already exists, so your replacements survive).</summary>
-        static Sprite SaveSprite(Sprite generated, string name, Vector4 border)
+        internal static Sprite SaveSprite(Sprite generated, string name, Vector4 border)
         {
             Directory.CreateDirectory(SpriteDir);
             string path = SpriteDir + "/" + name + ".png";

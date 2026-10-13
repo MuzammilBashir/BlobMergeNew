@@ -10,14 +10,16 @@ namespace BlobMerge
     /// [WindowStart … WindowStart + 10] in full colour on a stepped path (6 on the lower row, 5 on the upper), plus the
     /// new-fish celebration (the creature flies from the merge point into its slot, the slot pops with a ring, an
     /// additive glow flash and sparkles, a "NAME!" label floats over the tank) and the shift (the first icon fades out,
-    /// the others slide one slot along, the next creature pops in at the end). Built at runtime under the HUD canvas
-    /// (HUD_Fish.prefab is not edited); all animation runs on <see cref="GameTime"/> so it records correctly.
+    /// the others slide one slot along, the next creature pops in at the end). Layout lives in CreatureBar_Fish.prefab
+    /// (path points on PathOuter/PathInner, one marker per bar position under Slots, the icon prefab); without a prefab
+    /// <see cref="BuildDefault"/> makes the same thing in code. The fly-in, bursts and label stay procedural. All
+    /// animation runs on <see cref="GameTime"/> so it records correctly.
     /// </summary>
     public class CreatureBarView : MonoBehaviour
     {
-        // layout: the mock ×3 in 1080 reference units; the strip is 276 tall, slot positions relative to its centre
+        // default layout (BuildDefault): the mock ×3 in 1080 reference units; the strip is 276 tall, slots relative to its centre
         const float Width = 1080f, Height = 276f, IconSize = 78f, Step = 99f, RowY = 66f, LowerX0 = -474f, UpperX0 = 99f;
-        const int LowerCount = 6;
+        const int LowerCount = 6, DefaultSlots = 11;
         const float OuterStroke = 72f, InnerStroke = 54f, TagY = 468f, TagSize = 54f, EnterFromX = 90f;
         static readonly Vector2[] PathPoints = { new Vector2(-474f, -66f), new Vector2(21f, -66f), new Vector2(75f, 66f), new Vector2(495f, 66f) };
         // timings (mock CSS / JS)
@@ -29,17 +31,31 @@ namespace BlobMerge
 
         // user's bar reference (2026-10-13): purple path with a white border (20 % thinner than the reference's), round
         // icons with a thin navy edge + white ring; locked creatures are bluish-grey silhouettes, the next unlock a green ring
-        static readonly Color Edge = MeshUtil.Hex("14306B"), Ring = MeshUtil.Hex("FBF6EC"), NextRing = MeshUtil.Hex("5FD43A"),
-            Open = MeshUtil.Hex("073280"), Locked = MeshUtil.Hex("073280"), Shadow = MeshUtil.Hex("7E92C4");
-        const float EdgePx = 1.5f, RingPx = 3f, NextRingPx = 5f;
+        [Header("Icon colours per state")]
+        public Color ringColor = new Color32(0xFB, 0xF6, 0xEC, 0xFF);
+        [Tooltip("Ring of the next creature to unlock.")]
+        public Color nextRingColor = new Color32(0x5F, 0xD4, 0x3A, 0xFF);
+        [Tooltip("Extra thickness of the next-unlock ring (the icon prefab's ring is the normal one).")]
+        public float nextRingExtra = 2f;
+        public Color openFill = new Color32(0x07, 0x32, 0x80, 0xFF);
+        public Color lockedFill = new Color32(0x07, 0x32, 0x80, 0xFF);
+        [Tooltip("Tint of a locked creature's silhouette.")]
+        public Color silhouette = new Color32(0x7E, 0x92, 0xC4, 0xFF);
+
+        [Header("Parts (move the Slots markers to change the layout)")]
+        public CreatureIconView iconPrefab;
+        [Tooltip("One marker per bar position, first to last. Positions past the last continue its direction.")]
+        public RectTransform[] slots;
+        public RectTransform iconLayer, burstLayer;
 
         GameController game;
         Canvas canvas;
-        RectTransform root, iconLayer, burstLayer, fxLayer;
+        RectTransform root, fxLayer;
+        float iconSize;
         TMP_Text tag;
         float clock, tagT = -1f;
 
-        class Icon { public int tier; public RectTransform rt; public CanvasGroup group; public float popT = -1f; public bool open; public Image ring, fill, fish; }
+        class Icon { public int tier; public RectTransform rt; public CanvasGroup group; public float popT = -1f; public bool open; public CreatureIconView view; public Vector2 fillSize; }
         readonly Dictionary<int, Icon> icons = new Dictionary<int, Icon>();
         Icon leaving, entering;
         int shownStart = -1;
@@ -62,26 +78,18 @@ namespace BlobMerge
         /// <summary>(dropped tier) — the slide finished; that creature is gone from the game.</summary>
         public event System.Action<int> ShiftDone;
 
-        public static CreatureBarView Create(GameController g, HudView hud)
+        /// <summary>The bar from <paramref name="prefab"/> (or the code default), under the HUD canvas.</summary>
+        public static CreatureBarView Create(GameController g, HudView hud, CreatureBarView prefab)
         {
             var canvas = hud.GetComponent<Canvas>();
             if (canvas == null) canvas = hud.GetComponentInChildren<Canvas>();
-            var go = new GameObject("CreatureBar", typeof(RectTransform));
-            var v = go.AddComponent<CreatureBarView>();
+            var v = prefab != null ? Instantiate(prefab, canvas.transform, false) : BuildDefault(canvas.transform, null);
+            v.name = "CreatureBar";
             v.game = g;
             v.canvas = canvas;
-            v.root = (RectTransform)go.transform;
-            v.root.SetParent(canvas.transform, false);
-            v.root.anchorMin = v.root.anchorMax = new Vector2(0.5f, 0f);
-            v.root.pivot = new Vector2(0.5f, 0.5f);
-            v.root.sizeDelta = new Vector2(Width, Height);
-            NestedCanvas(go); // the animated bar rebuilds its own batch, not the whole HUD canvas
-
-            // the path: a dark outer stroke under a blue inner one, round caps and joins
-            Stroke(v.root, "PathOuter", MeshUtil.Hex("FBF6EC"), OuterStroke);
-            Stroke(v.root, "PathInner", MeshUtil.Hex("5660A8"), InnerStroke);
-            v.iconLayer = Layer(v.root, "Icons");
-            v.burstLayer = Layer(v.root, "Bursts");
+            v.root = (RectTransform)v.transform;
+            v.root.anchorMin = v.root.anchorMax = new Vector2(0.5f, 0f); // Place() measures from the screen bottom
+            v.iconSize = v.iconPrefab.Rect.sizeDelta.x;
 
             // flights and the label move over the whole screen: a full-canvas layer above the bar
             v.fxLayer = Layer(canvas.transform, "CreatureBarFx");
@@ -97,6 +105,56 @@ namespace BlobMerge
             v.tag.alignment = TextAlignmentOptions.Center;
             v.tag.raycastTarget = false;
             v.tag.alpha = 0f;
+            return v;
+        }
+
+        /// <summary>The default bar (the prefab builder saves this): path strokes, icon/burst layers, 11 slot markers.
+        /// <paramref name="icon"/> null = an inactive icon template child.</summary>
+        public static CreatureBarView BuildDefault(Transform parent, CreatureIconView icon)
+        {
+            var go = new GameObject("CreatureBar", typeof(RectTransform));
+            var v = go.AddComponent<CreatureBarView>();
+            var root = (RectTransform)go.transform;
+            root.SetParent(parent, false);
+            root.anchorMin = root.anchorMax = new Vector2(0.5f, 0f);
+            root.pivot = new Vector2(0.5f, 0.5f);
+            root.sizeDelta = new Vector2(Width, Height);
+            NestedCanvas(go); // the animated bar rebuilds its own batch, not the whole HUD canvas
+
+            // the path: a white outer stroke under a purple inner one, round caps and joins
+            Stroke(root, "PathOuter", MeshUtil.Hex("FBF6EC"), OuterStroke);
+            Stroke(root, "PathInner", MeshUtil.Hex("5660A8"), InnerStroke);
+            v.iconLayer = Layer(root, "Icons");
+            v.burstLayer = Layer(root, "Bursts");
+            var slotRoot = Layer(root, "Slots");
+            v.slots = new RectTransform[DefaultSlots];
+            for (int i = 0; i < DefaultSlots; i++)
+            {
+                v.slots[i] = Layer(slotRoot, "Slot" + i);
+                v.slots[i].anchoredPosition = i < LowerCount
+                    ? new Vector2(LowerX0 + i * Step, -RowY)
+                    : new Vector2(UpperX0 + (i - LowerCount) * Step, RowY);
+            }
+            if (icon == null)
+            {
+                icon = BuildDefaultIcon(root);
+                icon.gameObject.SetActive(false); // template only
+            }
+            v.iconPrefab = icon;
+            return v;
+        }
+
+        /// <summary>The default icon: navy outline, white ring, navy fill, fish (CreatureIcon.prefab is saved from this).</summary>
+        public static CreatureIconView BuildDefaultIcon(Transform parent)
+        {
+            var edge = Img((RectTransform)parent, "CreatureIcon", UiSprites.Circle, MeshUtil.Hex("14306B"), IconSize);
+            var v = edge.gameObject.AddComponent<CreatureIconView>();
+            v.edge = edge;
+            v.ring = Img(edge.rectTransform, "Ring", UiSprites.Circle, MeshUtil.Hex("FBF6EC"), IconSize - 3f);
+            v.fill = Img(edge.rectTransform, "Fill", UiSprites.Circle, MeshUtil.Hex("073280"), IconSize - 9f);
+            v.fish = Img(edge.rectTransform, "Fish", null, Color.white, IconSize * 0.8f);
+            v.fish.preserveAspect = true;
+            edge.gameObject.AddComponent<CanvasGroup>();
             return v;
         }
 
@@ -139,10 +197,14 @@ namespace BlobMerge
             return img;
         }
 
-        /// <summary>Slot centre (strip-local) of bar position <paramref name="index"/>; past the end continues the upper row.</summary>
-        public static Vector2 SlotPos(int index) => index < LowerCount
-            ? new Vector2(LowerX0 + index * Step, -RowY)
-            : new Vector2(UpperX0 + (index - LowerCount) * Step, RowY);
+        /// <summary>Slot centre (strip-local) of bar position <paramref name="index"/>; past the last marker continues its direction.</summary>
+        public Vector2 SlotPos(int index)
+        {
+            int n = slots.Length;
+            if (index < n) return root.InverseTransformPoint(slots[index].position);
+            Vector2 last = root.InverseTransformPoint(slots[n - 1].position), prev = root.InverseTransformPoint(slots[n - 2].position);
+            return last + (last - prev) * (index - n + 1);
+        }
 
         /// <summary>Where a creature's slot is right now, in the HUD canvas's local space (the fly-in target).</summary>
         public Vector2 SlotCanvasPos(int tier) => CanvasPos(SlotPos(tier - shownStart));
@@ -151,12 +213,12 @@ namespace BlobMerge
 
         Icon MakeIcon(int tier)
         {
-            var edge = Img(iconLayer, "Creature" + tier, UiSprites.Circle, Edge, IconSize);
-            var icon = new Icon { tier = tier, rt = edge.rectTransform, group = edge.gameObject.AddComponent<CanvasGroup>() };
-            icon.ring = Img(icon.rt, "Ring", UiSprites.Circle, Ring, IconSize - 2f * EdgePx);
-            icon.fill = Img(icon.rt, "Fill", UiSprites.Circle, Open, IconSize - 2f * (EdgePx + RingPx));
-            icon.fish = Img(icon.rt, "Fish", null, Color.white, IconSize * 0.8f);
-            icon.fish.preserveAspect = true;
+            var view = Instantiate(iconPrefab, iconLayer, false);
+            view.name = "Creature" + tier;
+            view.gameObject.SetActive(true);
+            var group = view.GetComponent<CanvasGroup>();
+            if (group == null) group = view.gameObject.AddComponent<CanvasGroup>();
+            var icon = new Icon { tier = tier, rt = view.Rect, group = group, view = view, fillSize = view.fill.rectTransform.sizeDelta };
             icons[tier] = icon;
             // a creature whose fly-in is still under way stays a silhouette until its pop
             SetOpen(icon, tier <= game.progression.Highest && !FlightWaitingFor(tier));
@@ -168,16 +230,16 @@ namespace BlobMerge
         void SetOpen(Icon icon, bool open)
         {
             icon.open = open;
-            icon.fish.sprite = open ? game.FishSprite(icon.tier) : Silhouette(icon.tier);
-            icon.fish.color = open ? Color.white : Shadow;
-            icon.fill.color = open ? Open : Locked;
+            icon.view.fish.sprite = open ? game.FishSprite(icon.tier) : Silhouette(icon.tier);
+            icon.view.fish.color = open ? Color.white : silhouette;
+            icon.view.fill.color = open ? openFill : lockedFill;
             int next = int.MaxValue;
             foreach (var i in icons.Values) if (!i.open && i.tier < next) next = i.tier;
             foreach (var i in icons.Values)
             {
                 bool n = i.tier == next;
-                i.ring.color = n ? NextRing : Ring;
-                i.fill.rectTransform.sizeDelta = Vector2.one * (IconSize - 2f * (EdgePx + (n ? NextRingPx : RingPx)));
+                i.view.ring.color = n ? nextRingColor : ringColor;
+                i.view.fill.rectTransform.sizeDelta = i.fillSize - Vector2.one * (n ? 2f * nextRingExtra : 0f);
             }
         }
 
@@ -271,7 +333,7 @@ namespace BlobMerge
             var b = new Burst { rt = Layer(burstLayer, "Burst"), sparks = new Image[Sparks] };
             b.glow = Img(b.rt, "Flash", FlashSprite, Color.white, GlowSize);
             b.glow.material = LevelCompleteView.Additive;
-            b.ring = Img(b.rt, "Ring", RingSprite, Color.white, IconSize);
+            b.ring = Img(b.rt, "Ring", RingSprite, Color.white, iconSize);
             for (int i = 0; i < Sparks; i++)
             {
                 b.sparks[i] = Img(b.rt, "Spark", GlowSprite, Color.white, SparkSize * 2.2f);
@@ -382,7 +444,7 @@ namespace BlobMerge
                 float y = Mathf.LerpUnclamped(f.from.y, to.y, LevelCompleteView.Bezier(0.3f, -0.4f, 0.6f, 1f, u)); // lifts first
                 if (waiting && f.t >= FlyDur) y += Mathf.Sin((f.t - FlyDur) * 6f) * 6f * root.localScale.x; // queued: gentle bob
                 f.rt.anchoredPosition = new Vector2(x, y);
-                f.rt.sizeDelta = Vector2.one * Mathf.Lerp(FlySize, IconSize * root.localScale.x, LevelCompleteView.Bezier(0.25f, 0.1f, 0.25f, 1f, u));
+                f.rt.sizeDelta = Vector2.one * Mathf.Lerp(FlySize, iconSize * root.localScale.x, LevelCompleteView.Bezier(0.25f, 0.1f, 0.25f, 1f, u));
                 if (f.t < PopAt || waiting) continue;
 
                 // arrived: the slot pops; the bar's last creature then shifts the bar
@@ -477,10 +539,24 @@ namespace BlobMerge
             {
                 // anchors are bottom-centre: local y measured from the canvas's bottom edge, halved = the midpoint
                 float fromBottom = local.y - canvasRt.rect.yMin;
-                root.anchoredPosition = new Vector2(0f, fromBottom * 0.5f);
+                // never lower than the bottom icon row's clearance above the screen edge (the band under the container is
+                // barely taller than the strip, so centring alone left the lower row touching / cut by the screen bottom)
+                float s = Mathf.Min(1f, canvasRt.rect.width / (root.sizeDelta.x + 2f * PopMargin));
+                root.anchoredPosition = new Vector2(0f, Mathf.Max(fromBottom * 0.5f, BelowCentre() * s));
             }
             // the strip is a full 1080 wide plus pop headroom at both ends: narrower canvases shrink it to fit (centred)
-            root.localScale = Vector3.one * Mathf.Min(1f, canvasRt.rect.width / (Width + 2f * PopMargin));
+            root.localScale = Vector3.one * Mathf.Min(1f, canvasRt.rect.width / (root.sizeDelta.x + 2f * PopMargin));
+        }
+
+        const float EdgeMargin = 24f; // canvas units kept free under the lowest icon
+
+        /// <summary>How far the lowest icon's edge (+ <see cref="EdgeMargin"/>) reaches below the strip's centre, in the strip's own units.</summary>
+        float BelowCentre()
+        {
+            float low = 0f;
+            foreach (var s in slots)
+                if (s != null) low = Mathf.Min(low, root.InverseTransformPoint(s.position).y);
+            return -low + iconSize * 0.5f + EdgeMargin;
         }
 
         // ------------------------------------------------------------------ procedural sprites

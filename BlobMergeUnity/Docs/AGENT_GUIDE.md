@@ -97,12 +97,14 @@ Assets/Scripts/
   UI/UiSprites.cs        SDF-rasterised sprites (rounded rect 9-slice, crown, gear, circle).
   DebugAutopilot.cs      command-line bot + diagnostics (does nothing without args).
   Editor/ProjectSetup.cs Tools menu: Setup Project, Build Android APK, BuildWindowsTest, SetupAndBuildAndroid.
-  Editor/FontSetup.cs    [InitializeOnLoad] imports TMP essentials, creates Barlow SDF font asset (with retry).
+  Editor/FontSetup.cs    [InitializeOnLoad] imports TMP essentials, creates Barlow SDF font asset (with retry) and
+                         one per family in its Extra table (Fredoka, Nunito); menu: Build Font Assets.
   Editor/HudPrefabBuilder.cs  creates HUD.prefab, outline material, sprite PNGs (never overwrites; Rebuild menu).
 Assets/Shaders/VertexColor.shader   "BlobMerge/VertexColor": unlit, SrcAlpha/OneMinusSrcAlpha, ZWrite Off, Cull Off
 Assets/Materials/VertexColor.mat
-Assets/Fonts/Barlow-Bold.ttf (+ Barlow-OFL.txt)
+Assets/Fonts/Barlow-Bold.ttf (+ Barlow-OFL.txt), Fredoka-Bold.ttf, Nunito-Italic-VariableFont_wght.ttf
 Assets/Resources/Fonts/Barlow-Bold SDF.asset, Barlow-Bold Outline.mat   (TextStyle loads these by name)
+Assets/Resources/Fonts/Fredoka-Bold SDF.asset, Nunito-Italic SDF.asset  (made by FontSetup; dynamic atlases)
 Assets/Resources/UI/HUD.prefab                                          (GameController loads if hudPrefab empty)
 Assets/UI/Sprites/RoundedRect.png, Crown.png, Gear.png
 Assets/Settings/URP_Asset.asset, URP_Renderer.asset
@@ -225,6 +227,32 @@ door bars. Palette constants at the top of `Board.cs`.
   `settingsButton` (no action yet), `gameOverPanel`, `gameOverText`, `scorePunchScale`, `gameOverFormat`.
   The user edits it in Prefab Mode. `HudPrefabBuilder` never overwrites it (only the explicit Rebuild menu).
 - If the prefab is missing, `HudView.Build()` makes the same layout at runtime with generated sprites.
+- **Fish UI is all prefabs (user edits them, 2026-10-13).** `UiPrefabBuilder` (menu *Build UI Prefabs*, also run by
+  Setup Project) creates each only when missing and links them on `BoardTheme_Fish` (`splashPrefab`,
+  `creatureBarPrefab`, `celebrationPrefab`, `gameOverPrefab`): `Assets/UI/Prefabs/Splash_Fish` (`SplashView`, once per
+  launch), `CreatureBar_Fish` (`CreatureBarView`: path points on PathOuter/PathInner, `Slots/Slot0..10` markers = bar
+  positions, state colours), `CreatureIcon` (`CreatureIconView`), `Celebration_Fish` (`LevelCompleteView`: texts filled at
+  runtime, big word from `LetterTemplate`), `GameOverPopup_Fish` (`GameOverPopup`: the level-fail card — `score` and
+  `playAgain` are handed to the HUD by `GameOverPopup.Install` at startup, so **keep those two fields assigned**;
+  `CentreBestRow` overwrites the crown/best x every show, use `crownGap`). `HUD_Fish.prefab` got the Fish Fantasy art +
+  the popup baked in once, then *Build UI Prefabs* **moved the popup out** into its own prefab and cleared the HUD's
+  `gameOverPanel`/`gameOverText`/`playAgainButton` (it won't re-bake once the theme has a `gameOverPrefab`, or there'd be
+  two popups). **Settings** (all scenes): `Resources/UI/Settings.prefab` (`SettingsPopup`, user-edited — keep the
+  `soundButton`/`hapticsButton`/`closeButton`/`soundOff`/`hapticsOff` links) is spawned under the HUD by
+  `SettingsPopup.Install` (called from `BuildUI`), opened by the HUD gear, pauses via `GameController.TryPauseForSettings`
+  (`Time.timeScale=0`, UI animates on `GameTime.UnscaledDelta`). Each toggle button has a `Mask`, its `Disable` child
+  (slash image) is shown while off. State = `GameSettings` (PlayerPrefs `blobmerge.sound/haptics`; sound = `AudioListener.volume`,
+  haptics gate in `Sfx.Haptic`). **HUD scale:** `GameController.FitHudScale` overrides the HUD prefab's `CanvasScaler`
+  at runtime (match height, reference height × camera-size/height-fit size) so canvas units track the camera's world
+  layout — `hudSpace` (top) and `progressBarSpace` (creature bar band) are fractions of screen *height*, and the prefab's
+  match 0.5 squeezed them on wide screens (tablet 3:4). 1080×1920 is unchanged. `CreatureBarView.Place` also keeps
+  `EdgeMargin` free under the lowest icon. Check layouts with `test.ps1 -scene Fish -width W -height H` (3:4 = 768×1024).
+  **Backdrop wave:** the painted plate (`BoardTheme.backgroundPlate`) uses
+  `Resources/Shaders/BackdropWave.shader` (UV sway, 1 fetch + 2 sin) via `Board.BuildVisuals`; tune with
+  `backdropWaveAmount` (0 = plain sprite) / `backdropWaveSpeed` on the theme. Keep amplitude < ~0.01 — the plate only
+  overscans the view by 5 %. Test: `test.ps1 -scene Fish -extra '-blobsettings'`. Code-drawn sprites are saved to `Assets/UI/Sprites`. Without a prefab each view's
+  `BuildDefault()` makes the same thing in code. Fly-ins, bursts, confetti and labels stay procedural. Generate on the
+  mirror, then copy the new prefabs/sprites/metas back (script metas must match: the Editor may already have made them).
 - Reference resolution 1080×1920, match 0.5. Top elements: panel y −175, crown/gear y −170, best y −140
   (top-anchored). `hudOffsetY` adds to `topBar`.
 - **All text** (HUD, blob labels, floating texts) = TMP with Barlow Bold SDF + **one shared material**
@@ -327,6 +355,7 @@ Plan, numbers, mocks: `Docs/THEME_HEXAGONS.md`.
 | Shake | Camera shake section (values are trauma; strength = value²) |
 | Text outline | `Assets/Resources/Fonts/Barlow-Bold Outline.mat` |
 | HUD layout | `Assets/Resources/UI/HUD.prefab` |
+| Fish UI (splash, bar, icon, celebration, game-over popup) | `Assets/UI/Prefabs/*_Fish.prefab`, `Assets/Resources/UI/HUD_Fish.prefab` |
 
 Physics values apply **live** in Play mode (`ApplyPhysicsSettings` each frame). Shape noise/elongation/radius only
 affect newly spawned blobs. Board geometry/visual values apply on Play start.
@@ -357,6 +386,8 @@ Then `Read` the PNGs in `_testout` and grep `player.log` for `[BlobMerge]`.
 | `-fishspawn <v>,<v>` | Fish: drop these side by side at 1 s (they merge): `512,512` with `-fishstart 9,0` = sting ray + shift; `2048,2048` with `11,2` = orca panel |
 | `-blobfishshots` | with `-blobshot`: `fish<k>_0..3.png` at +0.1/0.4/0.8/1.4 s after each new fish / window shift |
 | `-blobwinshots` | with `-blobshot`: orca panel `win0..5.png`; the bot then "taps" (`ContinueAfterCelebration`) |
+| `-blobsplashshot` | with `-blobshot`: `splash.png` 1.2 s into the launch splash (its own clock; Fish) |
+| `-blobover <s>` | force a game over at s seconds; `overui.png` 0.7 s later (the game-over popup) |
 | `-blobcontinue` | after a game over, reload and keep playing (Fish progress kept) |
 | `-blobspeed <k>` | game clock × k (`Time.timeScale`; physics still 1/60 s ticks, max 3 per frame: k = 2 keeps 60 ticks per game second, 3 drops to ~53). Calibration runs |
 | `-fishresetgames` | Fish: clear the saved lifetime highest on **every** load (each continue game is a first-time player) |

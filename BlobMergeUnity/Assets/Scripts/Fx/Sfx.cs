@@ -11,7 +11,7 @@ namespace BlobMerge
 
         AudioSource[] sources;
         int next;
-        AudioClip pop, plop, whoosh, thud, tick, spawn, gameOver;
+        AudioClip pop, plop, whoosh, thud, tick, spawn, gameOver, uiClick, uiPop;
         AudioClip bPop, bBlub, bWhoosh, bSpawn, bPlink, bWin, ambience; // Fish theme (bubbly) set
         AudioClip[] bThrow; // Fish throw: light variants picked at random (user: the whoosh was loud and repetitive)
         public const int ThrowVariants = 4;
@@ -43,7 +43,9 @@ namespace BlobMerge
             tick = Clip(s["tick"]);
             spawn = Clip(s["spawn"]);
             gameOver = Clip(s["gameOver"]);
-            foreach (var kv in new[] { (pop, "pop"), (plop, "plop"), (whoosh, "whoosh"), (thud, "thud"), (tick, "tick"), (spawn, "spawn"), (gameOver, "gameOver") })
+            uiClick = Clip(s["ui_click"]);
+            uiPop = Clip(s["ui_pop"]);
+            foreach (var kv in new[] { (pop, "pop"), (plop, "plop"), (whoosh, "whoosh"), (thud, "thud"), (tick, "tick"), (spawn, "spawn"), (gameOver, "gameOver"), (uiClick, "ui_click"), (uiPop, "ui_pop") })
                 names[kv.Item1] = kv.Item2;
             if (Bubbly)
             {
@@ -63,7 +65,7 @@ namespace BlobMerge
         public static Dictionary<string, float[]> Render()
         {
             rng = new System.Random(7);
-            return new Dictionary<string, float[]> // initialisers run in order: keeps the noise sequence stable
+            var d = new Dictionary<string, float[]> // initialisers run in order: keeps the noise sequence stable
             {
                 { "pop", Synth(0.22f, (t, k) => Bubble(t, 420f, 900f, 26f) + Noise() * 0.05f * Env(t, 60f)) },
                 { "plop", Synth(0.12f, (t, k) => Bubble(t, 260f, 520f, 40f) * 0.8f) },
@@ -73,6 +75,15 @@ namespace BlobMerge
                 { "spawn", Synth(0.16f, (t, k) => Bubble(t, 600f, 380f, 30f) * 0.5f) },
                 { "gameOver", Synth(0.9f, (t, k) => (Mathf.Sin(2f * Mathf.PI * Mathf.Lerp(330f, 110f, k) * t) * 0.6f + Mathf.Sin(2f * Mathf.PI * Mathf.Lerp(220f, 80f, k) * t) * 0.4f) * Env(t, 3f)) },
             };
+            // UI sounds (every scene): no noise, so the seeded sounds above stay bit-identical
+            // button: a soft rounded "tok" with a tiny bright tick on top
+            d["ui_click"] = Normalize(Synth(0.1f, (t, k) =>
+                SoftBubble(t, 520f, 880f, 48f, 400f) * 0.7f + Mathf.Sin(2f * Mathf.PI * 1700f * t) * Env(t, 160f) * 0.18f), 0.7f);
+            // popup: a round "bloop" rising, with a small high bubble landing just after
+            d["ui_pop"] = Normalize(Synth(0.3f, (t, k) =>
+                SoftBubble(t, 300f, 820f, 17f, 220f) * 0.65f
+                + (t > 0.055f ? SoftBubble(t - 0.055f, 760f, 1350f, 30f, 260f) * 0.22f : 0f)), 0.75f);
+            return d;
         }
 
         /// <summary>Default set + the Fish theme's bubbly set (own seed, so the default sounds never change).</summary>
@@ -351,6 +362,26 @@ namespace BlobMerge
         }
         public void GameOver() { Play(gameOver, 0.9f, 1f); Haptic(120); }
 
+        // ---------------------------------------------------------------- UI
+        /// <summary>The live instance, so UI (popups) can play without a reference to the game.</summary>
+        public static Sfx Current { get; private set; }
+        void OnEnable() => Current = this;
+        void OnDestroy() { if (Current == this) Current = null; }
+
+        /// <summary>Button press.</summary>
+        public void Click() => Play(uiClick, 0.6f, 1f);
+        /// <summary>A popup appearing.</summary>
+        public void PopUp() => Play(uiPop, 0.65f, 1f);
+
+        /// <summary>Click sound on every Button under <paramref name="root"/> (inactive ones too — popups start hidden).
+        /// Call once, after the popups are installed: it runs after each button's own handler, so toggling Sound off is silent
+        /// and turning it on is heard.</summary>
+        public static void HookButtons(Transform root)
+        {
+            foreach (var b in root.GetComponentsInChildren<UnityEngine.UI.Button>(true))
+                b.onClick.AddListener(() => { if (Current != null) Current.Click(); });
+        }
+
         // ---------------------------------------------------------------- haptics
         public static bool forceLegacyVibrate; // keeps Handheld.Vibrate referenced so Unity adds the VIBRATE permission
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -359,7 +390,7 @@ namespace BlobMerge
 #endif
         void Haptic(long ms)
         {
-            if (!haptics) return;
+            if (!haptics || !GameSettings.HapticsOn) return;
 #if UNITY_ANDROID || UNITY_IOS
             if (forceLegacyVibrate) { Handheld.Vibrate(); return; }
 #endif

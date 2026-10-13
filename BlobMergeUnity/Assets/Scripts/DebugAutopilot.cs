@@ -45,7 +45,10 @@ namespace BlobMerge
             }
             continueMode = System.Array.IndexOf(a, "-blobcontinue") >= 0;
             winShots = System.Array.IndexOf(a, "-blobwinshots") >= 0;
+            splashShot = System.Array.IndexOf(a, "-blobsplashshot") >= 0;
             sagTest = System.Array.IndexOf(a, "-blobsag") >= 0;
+            settingsTest = System.Array.IndexOf(a, "-blobsettings") >= 0;
+            if (settingsTest) Sfx.Played += (n, v, p) => { if (n.StartsWith("ui_")) Debug.Log($"[BlobMerge] ui sound: {n} vol={v:F2} (soundOn={GameSettings.SoundOn})"); };
             fillTest = System.Array.IndexOf(a, "-blobfilltest") >= 0;
             twinTest = System.Array.IndexOf(a, "-blobtwintest") >= 0;
             rapid = System.Array.IndexOf(a, "-blobrapid") >= 0;
@@ -387,6 +390,7 @@ namespace BlobMerge
 
         // "-blobwinshots": orca celebration frames at these WinClock times (<shotPrefix>win0..5.png)
         bool winShots, won;
+        bool splashShot;
         int winShotIdx;
         static readonly float[] WinShotTimes = { 0.1f, 0.4f, 0.9f, 1.3f, 1.7f, 2.6f };
         bool WinShotsPending => winShots && won && !string.IsNullOrEmpty(shotPrefix) && winShotIdx < WinShotTimes.Length;
@@ -535,10 +539,56 @@ namespace BlobMerge
             }
         }
 
+        // "-blobsettings": gear -> Settings popup -> Sound off -> Haptics off -> Continue, with a screenshot per state.
+        // Runs on the real-time clock (the game is frozen while the popup is open) and restores both switches at the end:
+        // the test player shares PlayerPrefs with the Editor on this machine.
+        bool settingsTest;
+        int setStep;
+        float setAt = -1f;
+
+        void SettingsTest()
+        {
+            float now = Time.unscaledTime;
+            if (setAt < 0f) setAt = now;
+            var popup = FindAnyObjectByType<SettingsPopup>(FindObjectsInactive.Include);
+            string P(string n) => string.IsNullOrEmpty(shotPrefix) ? null : shotPrefix + n + ".png";
+            void Shot(string n) { if (P(n) != null) ScreenCapture.CaptureScreenshot(P(n)); }
+            void State(string what) => Debug.Log($"[BlobMerge] settings test: {what}: timeScale={Time.timeScale} popupActive={popup != null && popup.gameObject.activeSelf} " +
+                $"soundOn={GameSettings.SoundOn} listener={AudioListener.volume} hapticsOn={GameSettings.HapticsOn} " +
+                $"slashSound={(popup != null && popup.soundOff != null && popup.soundOff.activeSelf)} slashHaptics={(popup != null && popup.hapticsOff != null && popup.hapticsOff.activeSelf)} " +
+                $"prefsSound={PlayerPrefs.GetInt("blobmerge.sound", -9)} prefsHaptics={PlayerPrefs.GetInt("blobmerge.haptics", -9)} aim={aim.InputEnabled}");
+            if (popup == null) { if (now - setAt > 3f && setStep == 0) { Debug.Log("[BlobMerge] settings test: NO SettingsPopup in the scene"); setStep = 99; } return; }
+            switch (setStep)
+            {
+                case 0 when now - setAt > 4f:
+                    State("before");
+                    FindAnyObjectByType<HudView>().settingsButton.onClick.Invoke(); // the gear
+                    setStep = 1; setAt = now; break;
+                // a screenshot is taken at the end of its frame, so each click waits for the shot of the state before it
+                case 1 when now - setAt > 1f: State("open"); Shot("set_open"); setStep = 2; setAt = now; break;
+                case 2 when now - setAt > 0.3f: popup.soundButton.onClick.Invoke(); setStep = 3; setAt = now; break;
+                case 3 when now - setAt > 0.4f: State("sound off"); Shot("set_sound_off"); setStep = 4; setAt = now; break;
+                case 4 when now - setAt > 0.3f: popup.hapticsButton.onClick.Invoke(); setStep = 5; setAt = now; break;
+                case 5 when now - setAt > 0.4f: State("both off"); Shot("set_both_off"); setStep = 6; setAt = now; break;
+                case 6 when now - setAt > 0.3f: popup.closeButton.onClick.Invoke(); setStep = 7; setAt = now; break;
+                case 7 when now - setAt > 0.4f:
+                    State("closed");
+                    GameSettings.SoundOn = true; GameSettings.HapticsOn = true; // leave the machine's prefs as found
+                    State("restored");
+                    setStep = 8; break;
+            }
+        }
+
         void Update()
         {
             float t = Time.time - start;
             aim.SimDown = aim.SimUp = false;
+            if (settingsTest) SettingsTest();
+            if (splashShot && SplashView.Elapsed >= 1.2f && !string.IsNullOrEmpty(shotPrefix))
+            {
+                splashShot = false; // "-blobsplashshot": the launch splash, mid-hold
+                ScreenCapture.CaptureScreenshot(shotPrefix + "splash.png");
+            }
             if (sagTest) { SagTest(t); return; }
             if (fillTest) { FillTest(t); return; }
 

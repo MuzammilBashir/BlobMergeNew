@@ -284,6 +284,8 @@ namespace BlobMerge
         HudView hud;
         CreatureBarView bar;
         float lastAspect;
+        float hudHeightScale = 1f;   // camera size / the height-fit size: > 1 only when the screen is so narrow the width limits
+        Vector2? hudRefResolution;   // the HUD prefab's CanvasScaler reference, kept so the override never compounds
 
         public SoftBodyWorld World => world;
         public Board Board => board;
@@ -466,7 +468,8 @@ namespace BlobMerge
             if (!now && progression.Highest != ProgressionMath.TopTier - 1) return;
             orcaView = LevelCompleteView.Create(this, hud, celebration, "ALL CREATURES", "FOUND!",
                                                 FishSprite(ProgressionMath.TopTier),
-                                                FishLook.Name(ProgressionMath.TopTier).ToUpperInvariant() + " UNLOCKED!");
+                                                FishLook.Name(ProgressionMath.TopTier).ToUpperInvariant() + " UNLOCKED!",
+                                                Theme.celebrationPrefab);
         }
 
         /// <summary>Progress is saved outside the physics tick (PlayerPrefs.Save writes to disk/registry).</summary>
@@ -601,10 +604,28 @@ namespace BlobMerge
             float sizeByH = (boardHeight + hudTop + bottom) * 0.5f;
             float sizeByW = (boardWidth + padX * 2f) * 0.5f / lastAspect;
             cam.orthographicSize = Mathf.Max(sizeByH, sizeByW);
+            hudHeightScale = cam.orthographicSize / sizeByH;
+            FitHudScale();
             float top = boardHeight * 0.5f + hudTop, bot = -boardHeight * 0.5f - bottom;
             camBase = new Vector3(0, (top + bot) * 0.5f, -10);
             cam.transform.position = camBase;
             board.FitPlate(cam);
+        }
+
+        /// <summary>The camera lays the board out in world units, so the HUD's top strip (hudSpace) and bottom band (creature
+        /// bar) are fixed fractions of the screen HEIGHT. The prefab's scaler (match 0.5) instead made the canvas shorter on
+        /// wide screens (tablet 3:4: 1663 vs 1920 units), squeezing the 276-unit bar and the top bar out of their bands. Match
+        /// height with a reference that grows only when the camera is width-limited keeps canvas units = world units
+        /// (1080x1920 is unchanged).</summary>
+        void FitHudScale()
+        {
+            var scaler = hud != null ? hud.GetComponent<CanvasScaler>() : null;
+            if (scaler == null) return;
+            if (hudRefResolution == null) hudRefResolution = scaler.referenceResolution;
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 1f;
+            scaler.referenceResolution = new Vector2(hudRefResolution.Value.x, hudRefResolution.Value.y * hudHeightScale);
         }
 
         // ================================================================== blobs
@@ -1045,6 +1066,28 @@ namespace BlobMerge
             enableAimFrame = Time.frameCount + 1;
         }
 
+        bool settingsOpen;
+
+        /// <summary>The Settings popup wants to open: allowed in plain play only (not over the splash, the celebration
+        /// or game over, which freeze time themselves). Freezes the game and the aim until <see cref="ResumeFromSettings"/>.</summary>
+        public bool TryPauseForSettings()
+        {
+            if (gameOver || celebrating || splashing || settingsOpen) return false;
+            settingsOpen = true;
+            aim.Cancel();
+            aim.InputEnabled = false;
+            Time.timeScale = 0f;
+            return true;
+        }
+
+        public void ResumeFromSettings()
+        {
+            if (!settingsOpen) return;
+            settingsOpen = false;
+            Time.timeScale = 1f;
+            enableAimFrame = Time.frameCount + 1; // the Continue tap must not grab a blob
+        }
+
         /// <summary>Reloads the scene after a game over: a fresh board (Fish progress is saved and stays).</summary>
         public void Restart()
         {
@@ -1182,6 +1225,7 @@ namespace BlobMerge
             Time.timeScale = 0f;
             hud.ShowGameOver(score);
             sfx.GameOver();
+            sfx.PopUp(); // the popup card appearing
         }
 
         // ================================================================== UI
@@ -1191,22 +1235,26 @@ namespace BlobMerge
             var prefab = hudPrefab != null ? hudPrefab : Resources.Load<HudView>("UI/HUD");
             hud = prefab != null ? Instantiate(prefab) : HudView.Build(UiSprites.RoundedRect, UiSprites.Crown, UiSprites.Gear);
             hud.name = "HUD";
+            FitHudScale();
             TextStyle.CopyFrom(hud.WorldTextStyle); // blob numbers / floating scores match the HUD prefab's text style
             hud.SetOffsetY(hudOffsetY);
             hud.SetScore(score, false);
             hud.SetBest(best);
-            splashing = true;
-            FishUi.Apply(this, hud, Theme, !AdTake, () =>
+            GameOverPopup.Install(hud, Theme.gameOverPrefab);
+            SettingsPopup.Install(this, hud);
+            if (hud.playAgainButton != null) hud.playAgainButton.onClick.AddListener(Restart);
+            splashing = !AdTake && SplashView.Show(Theme.splashPrefab, hud.transform, () =>
             {
                 splashing = false;
                 if (aim != null) aim.InputEnabled = true;
             });
             if (ProgressionOn)
             {
-                bar = CreatureBarView.Create(this, hud);
+                bar = CreatureBarView.Create(this, hud, Theme.creatureBarPrefab);
                 bar.ShiftStarted += start => WindowShifted?.Invoke(start);
                 bar.ShiftDone += OnBarShiftDone;
             }
+            Sfx.HookButtons(hud.transform); // click sound on every HUD / popup button (after their own handlers are wired)
         }
     }
 }
