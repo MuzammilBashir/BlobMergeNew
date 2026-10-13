@@ -71,7 +71,7 @@ $takeArgs = ((@($gameArgs, $musicArg) + $(if ($verbose) { "verbose=1" })) | ? { 
 foreach ($len in $lengths) {
   $recName = if ($variants) { "${name}_$([int]$len)s" } else { $name }
   $req = [ordered]@{
-    scene = "Assets/Scenes/$scene.unity"; director = "BlobMerge.Ads.BlobMergeDirector, Assembly-CSharp"
+    scene = "Assets/Scenes/$(if ($scene -eq "Fish") { "FishFantasy" } else { $scene }).unity"; director = "BlobMerge.Ads.BlobMergeDirector, Assembly-CSharp"
     persona = $personaPath; hand = "Assets/AdSim/Hands/cartoon_hand.json"; endcard = $endcardPath
     output = (Join-Path $out "$recName.mp4"); width = $width; height = $height; fps = $fps; msaa = $msaa; seed = $seed
     maxSeconds = $len; args = $takeArgs; ffmpeg = "ffmpeg"

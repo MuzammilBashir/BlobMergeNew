@@ -342,11 +342,18 @@ MonoBehaviour:
   hexSettleTime: 0.12
   hexLandingBounce: 0.2
   fishSize: 0.74
+  fishRadiusPerTier: 0.115
+  fishBigRadiusPerTier: 0.05
+  fishShowNumbers: 0
   fishLabelDrop: 0.52
   bubbleTint: 0.18
   bubbleRim: 0.6
   fishBob: 0.05
   fishBobSpeed: 1.6
+  fishSwim: 1
+  ambienceVolume: 0
+  fishBlinkMin: 2
+  fishBlinkMax: 5
   wallBounce: 0.3
   bumperBounce: 0.6
   blobBounce: 0.25
@@ -364,21 +371,22 @@ MonoBehaviour:
   mergeDuration: 0.12
   mergeAttraction: 220
   mergeInLane: 1
+  laneAutoMerge: 0
   blobGap: 0.03
-  launchPassThroughTime: 0.25
   launchStretch: 0.22
+  throwSoundVolume: 0
   impactFxSpeed: 7
-  shakeMaxOffset: 0.5
+  shakeMaxOffset: 0.15
   shakeMaxAngle: 2.5
-  shakeDecay: 1.8
-  shakeFrequency: 32
-  pileMergeShake: 0.45
+  shakeDecay: 0.8
+  shakeFrequency: 16
+  pileMergeShake: 0.2
   pileMergeShakePerTier: 0.05
   laneMergeShake: 0.15
-  aimMaxThreshold: 0.97
-  aimMaxKick: 0.4
-  aimMaxRumble: 0.28
-  launchShake: 0.2
+  aimMaxThreshold: 0.5
+  aimMaxKick: 0.2
+  aimMaxRumble: 0.1
+  launchShake: 0.1
   trailSpeed: 9
   lane:
     laneCount: 3
@@ -406,6 +414,47 @@ MonoBehaviour:
     sixteenAfterShots: 24
     weight16PerShot: 0.05
     weight16Max: 0.4
+    maxSameInRow: 2
+    poolStart: 3
+    poolLag: 3
+    poolCap: 6
+    poolDecay: 0.55
+    poolFadeFrom: 6
+    poolFade: 0.6
+    difficultyOn: 1
+    difficultyMin: 0.3
+    difficultyMax: 1
+    relaxDepth: 0.15
+    relaxSeconds: 20
+    climbSeconds: 40
+    graceSeconds: 60
+    graceDifficulty: 0.1
+    helpExposed: 1
+    helpLane: 0.4
+    refusalTries: 4
+    lockMinSpawns: 4
+    lockMaxSpawns: 12
+    lockCooldown: 3
+  progression:
+    enabled: 1
+    windowSize: 11
+  progressBarSpace: 2.2
+  celebration:
+    enabled: 1
+    celebrationConfetti: 1
+    confettiPieces: 30
+    slowMoScale: 0.3
+    slowMoSeconds: 0.4
+    panelAt: 0.7
+    tapAfter: 2.3
+    dimAlpha: 0.82
+    rayTurnSeconds: 49
+    rayCount: 29
+    rayColor: {r: 0.78431374, g: 0.9607843, b: 1, a: 1}
+    rayBlur: 0.4
+    glowParticlesPerSecond: 22
+    burstConfetti: 72
+    bubblesPerSecond: 4
 --- !u!114 &1282724206
 MonoBehaviour:
   m_ObjectHideFlags: 0

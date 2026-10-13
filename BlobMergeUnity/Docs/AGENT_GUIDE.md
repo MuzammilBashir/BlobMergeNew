@@ -113,7 +113,7 @@ Assets/Settings/URP_Asset.asset, URP_Renderer.asset
 `PhysicsTick(1/60)` → `lane.Tick` (spawning) → `CheckDanger` → `Blob.TickVisual` (mesh rebuild) → `board.Tick` →
 camera shake. Game over sets `Time.timeScale = 0`; tap restarts (scene reload).
 
-`PhysicsTick(h)`: per blob `TickPhysics` (size spring) → grow tween (`TickGrow`) → clear lane pass-through →
+`PhysicsTick(h)`: per blob `TickPhysics` (size spring) → grow tween (`TickGrow`) → clear lane pass-through / `TickDropThrough` →
 lane forces (`LaneSpawner.ApplyForces`) → merge jobs (`TickMerge`) → `world.Step(h)` → contacts (impact FX,
 `TryMerge`) → wall/floor impact FX → flight trails.
 
@@ -123,7 +123,10 @@ lane forces (`LaneSpawner.ApplyForces`) → merge jobs (`TickMerge`) → `world.
 
 ### Collision groups (`SoftBody.Group` / `IgnoreGroup`)
 `LaneGroup = 1`. A thrown blob ignores lane blobs for `launchPassThroughTime` (0.25 s) so neighbours can't knock it
-off its aim. A merging pair gets a unique group (`MergeGroupBase + id`) and ignores each other so they fuse.
+off its aim; after that it bumps them. **The lane is never a shelf** (2026-10-13): a Free blob slower than
+`dropThroughSpeed` with its top above the water line for `dropThroughDelay` gets `DropThrough` and ignores the lane until
+it is below it (it used to rest on the spring-held lane above the danger line: false game overs).
+A merging pair gets a unique group (`MergeGroupBase + id`) and ignores each other so they fuse.
 
 ### Sorting orders (all transparent, vertex colour)
 Backdrop −20 · Frame/field 0 · water+bubbles+danger 1 · doors 3 · selection outline 9 · blob 10 · labels 20 ·
@@ -186,7 +189,7 @@ matching is affine).
 
 ### 5.5 Merge
 - Rule: same value, both mergeable (`Free`, or `Lane` if `mergeInLane`; never `Aiming`), on contact.
-- **Fish: no automatic lane merges** (user 2026-10-12): lane blobs never merge on their own and the magnet is off; a thrown blob merges with a same-value lane blob (also during `launchPassThroughTime`): Lane+Lane is refused unless `LaneAutoMerge`; a `Free` blob still in its pass-through window merges on overlap (log `lane merge by throw`).
+- **Fish: no automatic lane merges** (user 2026-10-12): lane blobs never merge on their own and the magnet is off; a thrown blob merges with a same-value lane blob it flies into: Lane+Lane is refused unless `LaneAutoMerge`; `Free` blobs pass through the lane group, so a `Free` blob merges with a same-valued lane blob on overlap when closing in on it (log `lane merge by throw`).
 - `MergeJob` (`mergeDuration` 0.12 s): both shrink to 70% of *current* size, attract (`mergeAttraction`), ignore each
   other; then both released and one blob (value×2) spawned at the mass-weighted midpoint: in lane (stays `Lane`,
   lane size) if either source was in the lane and the midpoint is above the danger line, else `Free` at `landedScale`.
@@ -263,7 +266,7 @@ Look = `Blob.RenderHex`. Setup Project regenerates **both** scenes (code default
 assets or HUD prefabs. Scripts: `test.ps1 -scene Hexa`, `build-android.ps1 -scene Hexa` (→ `BlobMerge_Hexa.apk`,
 app id `….hexa`, name "BlobMerge Hexa"), `ad.ps1 -scene Hexa`. Bot flag `-blobhex` applies the preset in any scene.
 Plan, numbers, mocks: `Docs/THEME_HEXAGONS.md`.
-- `Assets/Scenes/Fish.unity` (2026-10-08) — `pieceShape = FishBubble` + `ApplyFishPreset()` (round balloons: noise 0.02,
+- `Assets/Scenes/FishFantasy.unity` (2026-10-08) — `pieceShape = FishBubble` + `ApplyFishPreset()` (round balloons: noise 0.02,
   pressure 7, maxSquash 1.5, minVolume 0.75), `HUD_Fish.prefab` (HUD copy recoloured navy/ocean blue),
   `Themes/BoardTheme_Fish.asset` (cyan→navy gradient behind a glass field, rising bubbles, `lightRays` 6, teal frame
   with cyan rim, bubble tints per creature). Creatures: `Resources/Fish/fish_00..09.png` (1 fry, 2 neon tetra, 4 clownfish,
@@ -361,6 +364,8 @@ Then `Read` the PNGs in `_testout` and grep `player.log` for `[BlobMerge]`.
 | `-blobfilltest` | drop the 2048…1 chain, log `fill test: covered= top= danger= fits=` |
 | `-blobrapid` | Fish stress: throws every 0.6 s, mostly sideways in the lane (into a same-valued lane blob or at a wall door) |
 | `-blobdoortest` / `-blobthrowtest` | spawn lane pieces on top of each other at the doors / weak sideways throw into a lane neighbour; `shotdoor.png`, `shotthrow_a/b.png` |
+| `-blobceiling` | the user's play style: every lane blob banked off the ceiling (45–89° up toward the far side, often at the fish entering at the other door, half at full power), ~3 throws/s; logs `STUCK … LANEBAND` (slow Free blob up in the lane band, with `touches=[…]`), pauses 4 s when one appears, `laneBandStuck=` in the summary |
+| `-blobcornertest` | scripted: tank-sized Free pieces dropped onto lane pieces at the ceiling (two-piece shelf at the left door, single piece at the right door); `shotcorner2/3.png` |
 | `-blobnodeepfix` | turn off `SoftBodyWorld` untangling (A/B repro of the 2026-10-12 stuck-at-the-wall bug) |
 | (always) | `STUCK` (slow Free/Merging above the danger line, late merges, lane blobs off the lane), `OVERLAP` (centres < 0.6 x radius sum), `UNTANGLE #n`, `over fill=` (tank fill at game over), `summary ... untangles=` |
 
