@@ -8,8 +8,9 @@ namespace BlobMerge.EditorTools
 {
     /// <summary>
     /// Makes sure TextMeshPro essentials are imported and the Barlow Bold SDF font asset exists
-    /// (Assets/Resources/Fonts/Barlow-Bold SDF.asset, loaded at runtime by TextStyle). Runs automatically
-    /// after script reloads, and from Tools > BlobMerge > Setup Project.
+    /// (Assets/Resources/Fonts/Barlow-Bold SDF.asset, loaded at runtime by TextStyle), plus an SDF asset for every
+    /// other family in Assets/Fonts (<see cref="Extra"/>). Runs automatically after script reloads, and from
+    /// Tools > BlobMerge > Setup Project.
     /// </summary>
     [InitializeOnLoad]
     public static class FontSetup
@@ -17,6 +18,16 @@ namespace BlobMerge.EditorTools
         public const string SourceTtf = "Assets/Fonts/Barlow-Bold.ttf";
         public const string FontAssetPath = "Assets/Resources/Fonts/Barlow-Bold SDF.asset";
         const string TmpSettingsPath = "Assets/TextMesh Pro/Resources/TMP Settings.asset";
+        const string Dir = "Assets/Resources/Fonts/";
+        const string Charset = "0123456789+-%:,.!?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ";
+
+        /// <summary>Families to offer besides Barlow: source TTF -> SDF asset. In Resources, so TMP_FontAsset.name or
+        /// Resources.Load can reach them at runtime. A variable font comes in at its default instance (no axes).</summary>
+        static readonly (string ttf, string asset)[] Extra =
+        {
+            ("Assets/Fonts/Fredoka-Bold.ttf", Dir + "Fredoka-Bold SDF.asset"),
+            ("Assets/Fonts/Nunito-Italic-VariableFont_wght.ttf", Dir + "Nunito-Italic SDF.asset"),
+        };
 
         static int retries;
 
@@ -40,7 +51,7 @@ namespace BlobMerge.EditorTools
         public static TMP_FontAsset Ensure()
         {
             var existing = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
-            if (existing != null) return existing;
+            if (existing != null) { EnsureExtras(); return existing; }
 
             EnsureEssentials();
             if (TMP_Settings.instance == null)
@@ -48,31 +59,49 @@ namespace BlobMerge.EditorTools
                 Debug.Log("[BlobMerge] Waiting for TMP Essential Resources to finish importing before creating the font asset.");
                 return null;
             }
-
-            var ttf = AssetDatabase.LoadAssetAtPath<Font>(SourceTtf);
-            if (ttf == null)
+            if (!File.Exists(SourceTtf))
             {
                 Debug.LogWarning("[BlobMerge] " + SourceTtf + " not found; text will use the TMP default font.");
                 return null;
             }
+            var fa = Create(SourceTtf, FontAssetPath);
+            EnsureExtras();
+            return fa;
+        }
 
-            // dynamic SDF atlas; generous padding so the outline never clips
+        /// <summary>SDF assets for the other families in Assets/Fonts (missing ones only).</summary>
+        [MenuItem("Tools/BlobMerge/Build Font Assets (creates missing ones only)")]
+        public static void EnsureExtras()
+        {
+            foreach (var f in Extra) Create(f.ttf, f.asset);
+        }
+
+        /// <summary>The SDF asset for <paramref name="ttfPath"/>, or the existing one. Dynamic 1024² SDFAA atlas with
+        /// generous padding so outlines never clip; the atlas and material live inside the asset.</summary>
+        static TMP_FontAsset Create(string ttfPath, string assetPath)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(assetPath);
+            if (existing != null) return existing;
+            var ttf = AssetDatabase.LoadAssetAtPath<Font>(ttfPath);
+            if (ttf == null) { Debug.LogWarning("[BlobMerge] " + ttfPath + " not found; no font asset made for it."); return null; }
+
             var fa = TMP_FontAsset.CreateFontAsset(ttf, 90, 12, GlyphRenderMode.SDFAA, 1024, 1024, AtlasPopulationMode.Dynamic, true);
-            if (fa == null) { Debug.LogError("[BlobMerge] Could not create TMP font asset from " + SourceTtf); return null; }
-            fa.name = "Barlow-Bold SDF";
-            fa.TryAddCharacters("0123456789+-%:,.!?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ");
+            if (fa == null) { Debug.LogError("[BlobMerge] Could not create TMP font asset from " + ttfPath); return null; }
+            string name = Path.GetFileNameWithoutExtension(assetPath);
+            fa.name = name;
+            fa.TryAddCharacters(Charset);
 
-            Directory.CreateDirectory(Path.GetDirectoryName(FontAssetPath));
-            AssetDatabase.CreateAsset(fa, FontAssetPath);
-            fa.atlasTextures[0].name = "Barlow-Bold Atlas";
+            Directory.CreateDirectory(Path.GetDirectoryName(assetPath));
+            AssetDatabase.CreateAsset(fa, assetPath);
+            fa.atlasTextures[0].name = name + " Atlas";
             AssetDatabase.AddObjectToAsset(fa.atlasTextures[0], fa);
-            fa.material.name = "Barlow-Bold Material";
+            fa.material.name = name + " Material";
             AssetDatabase.AddObjectToAsset(fa.material, fa);
             EditorUtility.SetDirty(fa);
             AssetDatabase.SaveAssets();
-            AssetDatabase.ImportAsset(FontAssetPath);
-            Debug.Log("[BlobMerge] Created " + FontAssetPath);
-            return AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            AssetDatabase.ImportAsset(assetPath);
+            Debug.Log("[BlobMerge] Created " + assetPath);
+            return AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(assetPath);
         }
 
         static void EnsureEssentials()

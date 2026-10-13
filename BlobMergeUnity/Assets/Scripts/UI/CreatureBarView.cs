@@ -539,10 +539,24 @@ namespace BlobMerge
             {
                 // anchors are bottom-centre: local y measured from the canvas's bottom edge, halved = the midpoint
                 float fromBottom = local.y - canvasRt.rect.yMin;
-                root.anchoredPosition = new Vector2(0f, fromBottom * 0.5f);
+                // never lower than the bottom icon row's clearance above the screen edge (the band under the container is
+                // barely taller than the strip, so centring alone left the lower row touching / cut by the screen bottom)
+                float s = Mathf.Min(1f, canvasRt.rect.width / (root.sizeDelta.x + 2f * PopMargin));
+                root.anchoredPosition = new Vector2(0f, Mathf.Max(fromBottom * 0.5f, BelowCentre() * s));
             }
             // the strip is a full 1080 wide plus pop headroom at both ends: narrower canvases shrink it to fit (centred)
             root.localScale = Vector3.one * Mathf.Min(1f, canvasRt.rect.width / (root.sizeDelta.x + 2f * PopMargin));
+        }
+
+        const float EdgeMargin = 24f; // canvas units kept free under the lowest icon
+
+        /// <summary>How far the lowest icon's edge (+ <see cref="EdgeMargin"/>) reaches below the strip's centre, in the strip's own units.</summary>
+        float BelowCentre()
+        {
+            float low = 0f;
+            foreach (var s in slots)
+                if (s != null) low = Mathf.Min(low, root.InverseTransformPoint(s.position).y);
+            return -low + iconSize * 0.5f + EdgeMargin;
         }
 
         // ------------------------------------------------------------------ procedural sprites

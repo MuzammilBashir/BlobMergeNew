@@ -21,6 +21,7 @@ namespace BlobMerge
         readonly List<Vector3> lv = new List<Vector3>(2048);
         readonly List<Color> lc = new List<Color>(2048);
         readonly List<int> lt = new List<int>(4096);
+        readonly List<float> cols = new List<float>(160);   // lane-band column positions (see LaneColumns)
 
         struct Bubble { public Vector2 pos; public float r, speed, phase; }
         Bubble[] bubbles;
@@ -111,6 +112,32 @@ namespace BlobMerge
             return r;
         }
 
+        /// <summary>Top of the field opening at x: TopY, curving down inside the frame's rounded top corners.</summary>
+        float OpeningTop(float x)
+        {
+            float r = CornerR, dx = Mathf.Abs(x) - (HalfW - r);
+            return dx <= 0f ? TopY : TopY - r + Mathf.Sqrt(Mathf.Max(0f, r * r - dx * dx));
+        }
+
+        float CornerR => Mathf.Clamp(g.frameCornerRadius, 0f, HalfW);
+
+        /// <summary>Column x positions for the lane band, left wall to right wall: through the rounded top corners
+        /// spaced by angle (the same 8 segments the frame outline uses, so the band's top edge lands exactly on it),
+        /// uniform across the flat middle. Uniform x spacing can't follow a corner — near the wall the arc is almost
+        /// vertical, so one column spanned the whole drop and cut the corner off.</summary>
+        void LaneColumns()
+        {
+            cols.Clear();
+            float r = CornerR, flat = HalfW - r;
+            const int seg = 8;
+            for (int k = 0; k <= seg; k++) // left corner: wall (angle pi) -> start of the flat top (pi/2)
+                cols.Add(-flat + r * Mathf.Cos(Mathf.PI - Mathf.PI * 0.5f * k / seg));
+            int mid = Mathf.Max(1, Mathf.CeilToInt(flat * 2f / 0.08f)); // the wavy bottom edge needs the resolution
+            for (int k = 1; k < mid; k++) cols.Add(Mathf.Lerp(-flat, flat, k / (float)mid));
+            for (int k = 0; k <= seg; k++) // right corner: flat top (pi/2) -> wall (0)
+                cols.Add(flat + r * Mathf.Cos(Mathf.PI * 0.5f * (1f - k / (float)seg)));
+        }
+
         MeshRenderer Add(string name, Mesh mesh, int order)
         {
             var go = new GameObject(name);
@@ -142,6 +169,15 @@ namespace BlobMerge
                 var sr = new GameObject("BackdropPlate").AddComponent<SpriteRenderer>();
                 sr.transform.SetParent(root, false);
                 sr.sprite = Th.backgroundPlate;
+                var waveShader = Th.backdropWaveAmount > 0f ? Resources.Load<Shader>("Shaders/BackdropWave") : null;
+                if (waveShader != null)
+                {
+                    var wm = new Material(waveShader);
+                    wm.SetFloat("_Amplitude", Th.backdropWaveAmount);
+                    wm.SetFloat("_Speed", Th.backdropWaveSpeed);
+                    wm.SetFloat("_Frequency", Th.backdropWaveFrequency);
+                    sr.sharedMaterial = wm;
+                }
                 sr.sortingOrder = -19; // over the gradient, under the space layer and the frame
                 plate = sr;
             }
@@ -149,9 +185,8 @@ namespace BlobMerge
 
             // every frame layer is a band around the field opening (not a filled slab), so a translucent field is glass
             var hole = Outline(0f);
-            // soft drop shadow under the container
-            MeshUtil.AddBand(v, c, t, Outline(ft + 0.35f, new Vector2(0, -0.35f)), hole, Th.frameShadow);
-            MeshUtil.AddBand(v, c, t, Outline(ft + 0.15f, new Vector2(0, -0.25f)), hole, Th.frameShadow);
+            // soft drop shadow under the container (one band: two stacked ones doubled the alpha into a dark rim)
+            MeshUtil.AddBand(v, c, t, Outline(ft + 0.21f, new Vector2(0, -0.21f)), hole, Th.frameShadow);
             if (Th.glossyFrame)
             {
                 // glass tube (Branding frame pick, rim profile outline 15 % / tube 48 % / bevel 29 % / inner edge 8 %):
@@ -551,19 +586,21 @@ namespace BlobMerge
                 MeshUtil.AddDisc(lv, lc, lt, new Vector2(x - b.r * 0.35f, b.pos.y + b.r * 0.35f), b.r * 0.18f, b.r * 0.18f, 0f, 8, hl);
             }
 
-            // darker band above the water line (the lane), with a wavy bottom edge
-            int n = 40;
-            float x0 = -HalfW + 0.02f, x1 = HalfW - 0.02f, top = TopY - 0.02f;
+            // darker band above the water line (the lane), with a wavy bottom edge. It reaches the glass and its top
+            // edge lands on the field opening itself, so no edge of it shows over the frame.
+            float x0 = -HalfW, x1 = HalfW;
+            int n = Mathf.Max(40, Mathf.CeilToInt((x1 - x0) / 0.08f));
+            LaneColumns();
             int bi = lv.Count;
             var shade = MeshUtil.Lin(LaneShade);
             var shadeTop = MeshUtil.Lin(new Color(LaneShade.r, LaneShade.g, LaneShade.b, LaneShade.a * 1.3f));
-            for (int i = 0; i <= n; i++)
+            for (int i = 0; i < cols.Count; i++)
             {
-                float x = Mathf.Lerp(x0, x1, i / (float)n);
+                float x = cols[i];
                 lv.Add(new Vector3(x, Wave(x, time))); lc.Add(shade);
-                lv.Add(new Vector3(x, top)); lc.Add(shadeTop);
+                lv.Add(new Vector3(x, OpeningTop(x))); lc.Add(shadeTop);
             }
-            for (int i = 0; i < n; i++)
+            for (int i = 0; i + 1 < cols.Count; i++)
             {
                 int a = bi + i * 2;
                 lt.Add(a); lt.Add(a + 1); lt.Add(a + 3);

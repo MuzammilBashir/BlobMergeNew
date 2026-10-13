@@ -27,7 +27,7 @@ MonoBehaviour:
   frameMain: {r: 0.051, g: 0.4235, b: 0.5765, a: 1}
   frameHighlight: {r: 0.3098, g: 0.8902, b: 1.0, a: 1}
   innerLip: {r: 0.0157, g: 0.1647, b: 0.2706, a: 1}
-  frameShadow: {r: 0, g: 0.03, b: 0.1, a: 0.5}
+  frameShadow: {r: 0, g: 0.03, b: 0.1, a: 0.276}
   doors: {r: 0.55, g: 0.95, b: 1, a: 0.85}
   fieldCenter: {r: 0.05, g: 0.3, b: 0.55, a: 0.1}
   fieldEdge: {r: 0.02, g: 0.15, b: 0.35, a: 0.35}
@@ -65,6 +65,9 @@ MonoBehaviour:
   - {r: 0.3608, g: 0.5608, b: 0.8627, a: 1}
   - {r: 0.2471, g: 0.549, b: 0.9412, a: 1}
   backgroundPlate: {fileID: 21300000, guid: 1c1486110c47de8d8f8b0e61366e82ad, type: 3}
+  backdropWaveAmount: 0.00271
+  backdropWaveSpeed: 1.2
+  backdropWaveFrequency: 17
   glossyFrame: 1
   splashPrefab: {fileID: 4762404036510746, guid: c65db02f978c8ee4e8803c250ed760eb, type: 3}
   creatureBarPrefab: {fileID: 3058872271515774332, guid: fd9cad8e51377a541a767c2a7ba11920, type: 3}

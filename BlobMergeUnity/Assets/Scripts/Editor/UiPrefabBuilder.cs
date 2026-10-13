@@ -9,7 +9,8 @@ namespace BlobMerge.EditorTools
     /// <summary>
     /// Generates the editable Fish UI prefabs (each only when missing, so your edits survive) and wires them into
     /// BoardTheme_Fish:
-    ///   Assets/UI/Prefabs/Splash_Fish.prefab, CreatureBar_Fish.prefab, CreatureIcon.prefab, Celebration_Fish.prefab
+    ///   Assets/UI/Prefabs/Splash_Fish.prefab, CreatureBar_Fish.prefab, CreatureIcon.prefab, Celebration_Fish.prefab,
+    ///   GameOverPopup_Fish.prefab (moved out of the HUD prefab, so it is one asset you can open on its own)
     ///   Assets/Resources/UI/HUD_Fish.prefab: new HUD art + the game-over popup baked in (once: when it has no popup yet)
     /// Sprites drawn in code are saved as PNGs in Assets/UI/Sprites (kept if present, so replacements survive).
     /// Delete a prefab and run the menu again to get the default back.
@@ -18,7 +19,8 @@ namespace BlobMerge.EditorTools
     {
         const string Dir = "Assets/UI/Prefabs", Art = "Assets/Art/UI/";
         const string IconPath = Dir + "/CreatureIcon.prefab", BarPath = Dir + "/CreatureBar_Fish.prefab",
-                     SplashPath = Dir + "/Splash_Fish.prefab", CelebrationPath = Dir + "/Celebration_Fish.prefab";
+                     SplashPath = Dir + "/Splash_Fish.prefab", CelebrationPath = Dir + "/Celebration_Fish.prefab",
+                     GameOverPath = Dir + "/GameOverPopup_Fish.prefab";
         const string FishHudPath = "Assets/Resources/UI/HUD_Fish.prefab", FishThemePath = "Assets/Themes/BoardTheme_Fish.asset";
 
         [MenuItem("Tools/BlobMerge/Build UI Prefabs (creates missing ones only)")]
@@ -35,14 +37,16 @@ namespace BlobMerge.EditorTools
             var celebration = Ensure<LevelCompleteView>(CelebrationPath, p => LevelCompleteView.BuildDefault(p).gameObject);
 
             var theme = AssetDatabase.LoadAssetAtPath<BoardTheme>(FishThemePath);
+            BakeFishHud(theme);                        // a brand new HUD gets the popup baked in...
+            var gameOver = EnsureGameOverPopup();      // ...and it moves straight out into its own prefab
             if (theme != null)
             {
                 if (theme.splashPrefab == null) theme.splashPrefab = splash;
                 if (theme.creatureBarPrefab == null) theme.creatureBarPrefab = bar;
                 if (theme.celebrationPrefab == null) theme.celebrationPrefab = celebration;
+                if (theme.gameOverPrefab == null) theme.gameOverPrefab = gameOver;
                 EditorUtility.SetDirty(theme);
             }
-            BakeFishHud();
             AssetDatabase.SaveAssets();
         }
 
@@ -87,11 +91,44 @@ namespace BlobMerge.EditorTools
             }
         }
 
+        /// <summary>GameOverPopup_Fish.prefab: the popup moved out of HUD_Fish (your edits come with it) or, failing that,
+        /// the code default. The HUD keeps no copy, so there is one asset to open and the theme points at it.</summary>
+        static GameOverPopup EnsureGameOverPopup()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<GameOverPopup>(GameOverPath);
+            if (existing != null) return existing;
+            if (File.Exists(FishHudPath))
+            {
+                var root = PrefabUtility.LoadPrefabContents(FishHudPath);
+                try
+                {
+                    var baked = root.GetComponentInChildren<GameOverPopup>(true);
+                    if (baked != null)
+                    {
+                        baked.gameObject.SetActive(true); // Install() hides it; an inactive prefab root never shows
+                        var saved = PrefabUtility.SaveAsPrefabAsset(baked.gameObject, GameOverPath);
+                        var hud = root.GetComponent<HudView>();
+                        if (hud != null) { hud.gameOverPanel = null; hud.gameOverText = null; hud.playAgainButton = null; }
+                        Object.DestroyImmediate(baked.gameObject);
+                        PrefabUtility.SaveAsPrefabAsset(root, FishHudPath);
+                        Debug.Log("[BlobMerge] Moved the game-over popup out of " + FishHudPath + " into " + GameOverPath);
+                        return saved.GetComponent<GameOverPopup>();
+                    }
+                }
+                finally { PrefabUtility.UnloadPrefabContents(root); }
+            }
+            return Ensure<GameOverPopup>(GameOverPath, p => GameOverPopup.BuildDefault(p,
+                Load(Art + "panel_popup.png"), Load(Art + "button_green.png"), Load(Art + "icon_crown.png")).gameObject);
+        }
+
         /// <summary>HUD_Fish: Fish Fantasy art on the score panel / crown / settings button, best score on one line, and
-        /// the game-over popup (replaces the old card). Skipped once the prefab has a popup (your edits stay).</summary>
-        static void BakeFishHud()
+        /// the game-over popup (replaces the old card). Skipped once the HUD has been baked (your edits stay) — the popup
+        /// having moved out to its own prefab counts as baked, or it would come back as a second copy.</summary>
+        static void BakeFishHud(BoardTheme theme)
         {
             if (!File.Exists(FishHudPath)) return;
+            if (theme != null && theme.gameOverPrefab != null) return;
+            if (AssetDatabase.LoadAssetAtPath<GameOverPopup>(GameOverPath) != null) return;
             var root = PrefabUtility.LoadPrefabContents(FishHudPath);
             try
             {

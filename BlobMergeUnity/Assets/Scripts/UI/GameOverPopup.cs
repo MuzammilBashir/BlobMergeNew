@@ -5,14 +5,20 @@ using UnityEngine.UI;
 namespace BlobMerge
 {
     /// <summary>
-    /// Fish game-over popup (a child of HUD_Fish.prefab, assigned as HudView.gameOverPanel): YOUR SCORE (HudView's
-    /// gameOverText), HIGH SCORE (crown + number) and Play again (HudView.playAgainButton; GameController hooks it up).
+    /// Fish game-over popup — its own prefab (Assets/UI/Prefabs/GameOverPopup_Fish.prefab, pointed at by
+    /// BoardTheme.gameOverPrefab; older HUDs keep it baked in as a child instead): YOUR SCORE, HIGH SCORE (crown +
+    /// number) and Play again. <see cref="Install"/> hands the score text and the button to the HUD, GameController
+    /// hooks Play again up to Restart.
     /// On show it moves above the creature bar, copies the HUD's best and pops the card in (GameTime: game over freezes time).
     /// </summary>
     public class GameOverPopup : MonoBehaviour
     {
         [Tooltip("Pops in.")]
         public RectTransform card;
+        [Tooltip("Gets the final score (through HudView.gameOverText / gameOverFormat).")]
+        public TMP_Text score;
+        [Tooltip("Restarts the run.")]
+        public Button playAgain;
         [Tooltip("Gets the HUD's best score.")]
         public TMP_Text best;
         [Tooltip("Optional: kept just left of the best number, the pair centred.")]
@@ -54,7 +60,28 @@ namespace BlobMerge
             if (u >= 1f) t = -1f;
         }
 
-        // ------------------------------------------------------------------ default layout (the prefab builder bakes this into HUD_Fish)
+        /// <summary>Spawns <paramref name="prefab"/> under the HUD (replacing a popup baked into the HUD prefab) and
+        /// points the HUD's gameOverPanel / gameOverText / playAgainButton at it, hidden. Nothing happens without a
+        /// prefab, so a HUD with the popup baked in still works. Call before Play again gets its listener.</summary>
+        public static void Install(HudView hud, GameOverPopup prefab)
+        {
+            if (hud == null || prefab == null) return;
+            if (hud.gameOverPanel != null) Destroy(hud.gameOverPanel);
+            var v = Instantiate(prefab, hud.transform, false);
+            v.name = "GameOverPopup";
+            v.Wire(hud);
+        }
+
+        /// <summary>Hands this popup's parts to the HUD and hides it.</summary>
+        void Wire(HudView hud)
+        {
+            hud.gameOverPanel = gameObject;
+            if (score != null) hud.gameOverText = score;
+            if (playAgain != null) hud.playAgainButton = playAgain;
+            gameObject.SetActive(false);
+        }
+
+        // ------------------------------------------------------------------ default layout (the prefab builder saves this)
         static readonly Color Ink = new Color32(0x14, 0x30, 0x6B, 0xFF); // body text on the white card (white would vanish)
         static readonly Vector2 Half = new Vector2(0.5f, 0.5f);
 
@@ -62,8 +89,17 @@ namespace BlobMerge
         /// playAgainButton. <paramref name="cardSprite"/> should be 9-sliced (wave header in the top border).</summary>
         public static GameOverPopup BuildInto(HudView hud, Sprite cardSprite, Sprite buttonSprite, Sprite crownSprite)
         {
+            var v = BuildDefault(hud.transform, cardSprite, buttonSprite, crownSprite);
+            hud.gameOverFormat = "{0}";
+            v.Wire(hud);
+            return v;
+        }
+
+        /// <summary>The default card under <paramref name="parent"/>, self-contained (no HUD needed).</summary>
+        public static GameOverPopup BuildDefault(Transform parent, Sprite cardSprite, Sprite buttonSprite, Sprite crownSprite)
+        {
             const float w = 680f, h = 760f;
-            var dim = Child(hud.transform, "GameOverPopup", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            var dim = Child(parent, "GameOverPopup", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             dim.gameObject.AddComponent<Image>().color = new Color(0.02f, 0.08f, 0.2f, 0.75f); // blocks taps on the board
             var v = dim.gameObject.AddComponent<GameOverPopup>();
 
@@ -73,8 +109,7 @@ namespace BlobMerge
             var title = Txt(v.card, "Title", "GAME OVER", 76f, new Vector2(0f, h * 0.5f - 88f), new Vector2(w - 80f, 110f), Color.white);
             title.characterSpacing = 2f;
             Txt(v.card, "ScoreLabel", "YOUR SCORE", 40f, new Vector2(0f, 118f), new Vector2(560f, 60f), Ink);
-            hud.gameOverText = Txt(v.card, "Score", "0", 120f, new Vector2(0f, 32f), new Vector2(560f, 140f), Ink);
-            hud.gameOverFormat = "{0}";
+            v.score = Txt(v.card, "Score", "0", 120f, new Vector2(0f, 32f), new Vector2(560f, 140f), Ink);
             Txt(v.card, "BestLabel", "HIGH SCORE", 40f, new Vector2(0f, -62f), new Vector2(560f, 60f), Ink);
             var row = Child(v.card, "Best", Half, Half, new Vector2(0f, -122f), new Vector2(560f, 80f));
             v.best = Txt(row, "Value", "0", 64f, Vector2.zero, new Vector2(400f, 80f), Ink);
@@ -91,10 +126,7 @@ namespace BlobMerge
             var btn = btnRt.gameObject.AddComponent<Button>();
             btn.targetGraphic = btnImg;
             Txt(btnRt, "Label", "PLAY AGAIN", 56f, new Vector2(0f, 6f), new Vector2(460f, 120f), Color.white);
-            hud.playAgainButton = btn;
-
-            hud.gameOverPanel = dim.gameObject;
-            dim.gameObject.SetActive(false);
+            v.playAgain = btn;
             return v;
         }
 

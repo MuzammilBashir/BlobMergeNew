@@ -145,6 +145,12 @@ namespace BlobMerge
         [Header("Glossy board (Fish Fantasy art pass; off = the original bevelled frame)")]
         [Tooltip("Painted backdrop behind the tank (covers the screen; replaces the gradient/vignette).")]
         public Sprite backgroundPlate;
+        [Tooltip("Backdrop plate wave: UV sway in texture units (0 = off, plain sprite). 0.004 is a gentle drift.")]
+        [Range(0f, 0.02f)] public float backdropWaveAmount = 0.00271f;
+        [Tooltip("Backdrop plate wave speed.")]
+        [Range(0f, 2f)] public float backdropWaveSpeed = 1.2f;
+        [Tooltip("Backdrop plate wave: waves per plate height.")]
+        [Range(1f, 20f)] public float backdropWaveFrequency = 17f;
         [Tooltip("Glass-tube frame: navy outline, cyan tube with a white top-left highlight, teal inner bevel.")]
         public bool glossyFrame;
         public Color glossOutline = new Color32(0x00, 0x1B, 0x5C, 0xFF);
@@ -161,6 +167,8 @@ namespace BlobMerge
         public CreatureBarView creatureBarPrefab;
         [Tooltip("Top-creature celebration panel (Celebration_Fish.prefab); empty = the code default.")]
         public LevelCompleteView celebrationPrefab;
+        [Tooltip("Game-over popup (GameOverPopup_Fish.prefab); empty = the one baked into the HUD prefab.")]
+        public GameOverPopup gameOverPrefab;
 
         static BoardTheme fallback;
         /// <summary>The original purple look (used when a scene has no theme assigned).</summary>
