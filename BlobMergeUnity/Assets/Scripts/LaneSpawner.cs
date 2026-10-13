@@ -62,9 +62,9 @@ namespace BlobMerge
         [Header("Difficulty director (Fish progression only)")]
         [Tooltip("Off = the plain spawn table (no refusals, no locks).")]
         public bool difficultyOn = true;
-        [Tooltip("Difficulty with the clownfish as the biggest made this game (R = 2).")]
+        [Tooltip("Difficulty with the seahorse as the biggest made this game (R = 2).")]
         [Range(0f, 1f)] public float difficultyMin = 0.3f;
-        [Tooltip("Difficulty with the orca made this game (R = 12). Base = lerp(min, max, (R-2)/10).")]
+        [Tooltip("Difficulty with the whale made this game (R = 16). Base = lerp(min, max, (R-2)/14).")]
         [Range(0f, 1f)] public float difficultyMax = 1f;
         [Tooltip("A new biggest creature this game drops the difficulty by this much (the sawtooth's relief).")]
         [Range(0f, 1f)] public float relaxDepth = 0.15f;

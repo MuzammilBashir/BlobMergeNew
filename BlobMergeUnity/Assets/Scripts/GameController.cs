@@ -124,10 +124,12 @@ namespace BlobMerge
         [Header("Fish bubble (Fish scene)")]
         [Tooltip("Fish width as a fraction of the bubble's diameter.")]
         [Range(0.3f, 1.2f)] public float fishSize = 0.74f;
-        [Tooltip("Fish scene: bubble growth per value step up to the whale (512). 0.115 = the original look (= Radius Per Tier; spec §0b restored it). Other scenes use Radius Per Tier.")]
-        public float fishRadiusPerTier = 0.115f;
-        [Tooltip("Fish scene: growth per step above the whale (1024, 2048, 4096). Visibly bigger than the whale but below the regular step, so a 4096 attempt fits the tank.")]
-        public float fishBigRadiusPerTier = 0.05f;
+        [Tooltip("Fish scene: bubble growth per creature up to Fish Big From Tier (17 creatures, 2026-10-13). Other scenes use Radius Per Tier.")]
+        public float fishTierStep = 0.075f;
+        [Tooltip("Fish scene: from this tier on (10 = dolphin) the bubbles grow by Fish Big Tier Step, so the whale (16) still fits the tank.")]
+        public int fishBigFromTier = 10;
+        [Tooltip("Fish scene: growth per creature from Fish Big From Tier on (dolphin -> whale).")]
+        public float fishBigTierStep = 0.04f;
         [Tooltip("Show the value number on fish bubbles. Off = the creature alone tells the value; merges still pop \"+N\".")]
         public bool fishShowNumbers = false;
         [Tooltip("How far below the bubble centre the number sits (fraction of the radius).")]
@@ -272,6 +274,7 @@ namespace BlobMerge
         int score, best;
         float dangerTimer;
         bool gameOver;
+        bool splashing; // the launch splash covers the screen: no aiming yet
         float gameOverAt;
         Vector2 aimDir;
         float aimPower;
@@ -303,7 +306,7 @@ namespace BlobMerge
 
         public static int Tier(int value) => Mathf.RoundToInt(Mathf.Log(Mathf.Max(1, value), 2f));
         public float RadiusForTier(int tier) => FishMode
-            ? Mathf.Min(maxRadius, baseRadius + fishRadiusPerTier * Mathf.Min(tier, 9) + fishBigRadiusPerTier * Mathf.Max(0, tier - 9))
+            ? Mathf.Min(maxRadius, baseRadius + fishTierStep * Mathf.Min(tier, fishBigFromTier) + fishBigTierStep * Mathf.Max(0, tier - fishBigFromTier))
             : Mathf.Min(maxRadius, baseRadius + radiusPerTier * tier);
         public Color ColorForTier(int tier)
         {
@@ -350,10 +353,10 @@ namespace BlobMerge
         Material fishMaterial;
         public Material FishMaterial => fishMaterial != null ? fishMaterial : (fishMaterial = Resources.Load<Material>("Materials/FishSprite"));
 
-        /// <summary>Fish for a value: Resources/Fish/fish_00 (1) … fish_12 (4096+).</summary>
+        /// <summary>Fish for a value: Resources/Fish/fish_00 (1) … fish_16 (65536+).</summary>
         public Sprite FishSprite(int tier)
         {
-            fishSprites ??= new Sprite[13];
+            fishSprites ??= new Sprite[ProgressionMath.TopTier + 1];
             int i = Mathf.Clamp(tier, 0, fishSprites.Length - 1);
             if (fishSprites[i] == null)
             {
@@ -446,6 +449,7 @@ namespace BlobMerge
             BuildUI();
             progressionReady = ProgressionOn && bar != null;
             SetupAim();
+            if (splashing) aim.InputEnabled = false;
             lane.Init(this, board);
         }
 
@@ -600,6 +604,7 @@ namespace BlobMerge
             float top = boardHeight * 0.5f + hudTop, bot = -boardHeight * 0.5f - bottom;
             camBase = new Vector3(0, (top + bot) * 0.5f, -10);
             cam.transform.position = camBase;
+            board.FitPlate(cam);
         }
 
         // ================================================================== blobs
@@ -796,7 +801,8 @@ namespace BlobMerge
             SaveProgressIfDirty(); // new fish from last frame's physics
             if (gameOver)
             {
-                if (Input.GetMouseButtonDown(0) && Time.unscaledTime > gameOverAt + 0.8f) Restart();
+                // the Fish popup restarts from its Play again button only
+                if (hud.playAgainButton == null && Input.GetMouseButtonDown(0) && Time.unscaledTime > gameOverAt + 0.8f) Restart();
             }
             else if (celebrationFrozen)
             {
@@ -1164,6 +1170,9 @@ namespace BlobMerge
             if (dangerTimer >= dangerHoldSeconds) EndGame();
         }
 
+        /// <summary>Test hook (bot "-blobover"): the normal game over, now.</summary>
+        public void EndGameNow() => EndGame();
+
         void EndGame()
         {
             gameOver = true;
@@ -1186,6 +1195,12 @@ namespace BlobMerge
             hud.SetOffsetY(hudOffsetY);
             hud.SetScore(score, false);
             hud.SetBest(best);
+            splashing = true;
+            FishUi.Apply(this, hud, Theme, !AdTake, () =>
+            {
+                splashing = false;
+                if (aim != null) aim.InputEnabled = true;
+            });
             if (ProgressionOn)
             {
                 bar = CreatureBarView.Create(this, hud);

@@ -12,7 +12,7 @@ namespace BlobMerge
     }
 
     /// <summary>
-    /// Idle life for the Fish theme's creatures (Resources/Fish/fish_00..12, all facing right): the sprite is drawn as
+    /// Idle life for the Fish theme's creatures (Resources/Fish/fish_00..16, all facing right): the sprite is drawn as
     /// a small grid that a travelling wave bends (tail + fins / tentacles / flippers), and skin-coloured eyelids close
     /// over the eyes for a blink. Eye positions were measured on the sprites (Branding/themes/fish, 2026-10-08;
     /// tiers 10-12 from sprites/r2, 2026-10-09; tier 1 neon tetra re-measured 2026-10-12).
@@ -21,37 +21,42 @@ namespace BlobMerge
     {
         public enum Swim { Tail, Tentacles, Flippers }
 
-        // 1 fry, 2 neon tetra, 4 clownfish, 8 pufferfish, 16 angelfish, 32 turtle, 64 octopus, 128 dolphin, 256 shark, 512 sting ray,
-        // 1024 hammerhead (eye on each hammer tip), 2048 orca, 4096 whale (user reorder 2026-10-12)
+        // 1 fry, 2 neon tetra, 4 seahorse, 8 clownfish, 16 pufferfish, 32 jellyfish, 64 angelfish, 128 sea turtle, 256 octopus,
+        // 512 seal, 1024 dolphin, 2048 shark, 4096 ray, 8192 hammerhead (eye on each hammer tip), 16384 orca, 32768 narwhal,
+        // 65536 whale (user order 2026-10-13; seahorse/jellyfish/seal/narwhal measured 2026-10-13)
         public static readonly FishEye[][] Eyes =
         {
             /* 0 */ new[] { new FishEye(0.258f, 0.027f, 0.250f, 0.234f, new Color(0.99f, 0.44f, 0.00f)) },
             /* 1 */ new[] { new FishEye(0.264f, 0.027f, 0.207f, 0.195f, new Color(0.96f, 0.82f, 0.66f)) },
-            /* 2 */ new[] { new FishEye(0.312f, 0.039f, 0.152f, 0.145f, new Color(0.99f, 0.56f, 0.00f)) },
-            /* 3 */ new[] { new FishEye(0.158f, 0.082f, 0.199f, 0.195f, new Color(0.99f, 0.85f, 0.11f)), new FishEye(0.424f, 0.070f, 0.090f, 0.180f, new Color(0.99f, 0.85f, 0.11f)) },
-            /* 4 */ new[] { new FishEye(0.287f, 0.021f, 0.113f, 0.137f, new Color(0.98f, 0.86f, 0.33f)) },
-            /* 5 */ new[] { new FishEye(0.314f, 0.217f, 0.121f, 0.129f, new Color(0.62f, 0.83f, 0.18f)) },
-            /* 6 */ new[] { new FishEye(0.223f, 0.172f, 0.094f, 0.156f, new Color(0.67f, 0.04f, 0.77f)), new FishEye(-0.006f, 0.096f, 0.152f, 0.160f, new Color(0.59f, 0.02f, 0.74f)) },
-            /* 7 */ new[] { new FishEye(0.102f, 0.299f, 0.102f, 0.137f, new Color(0.56f, 0.69f, 0.84f)) },
-            /* 8 */ new[] { new FishEye(0.234f, 0.090f, 0.125f, 0.125f, new Color(0.30f, 0.51f, 0.72f)) },
-            /* 9 */ new[] { new FishEye(0.285f, 0.059f, 0.098f, 0.102f, new Color(0.06f, 0.38f, 0.64f)) },
-            /* 10 */ new[] { new FishEye(0.064f, 0.016f, 0.098f, 0.102f, new Color(0.65f, 0.59f, 0.49f)), new FishEye(0.455f, 0.111f, 0.062f, 0.098f, new Color(0.55f, 0.49f, 0.39f)) },
-            /* 11 */ new[] { new FishEye(0.238f, 0.092f, 0.090f, 0.102f, new Color(0.14f, 0.16f, 0.22f)) },
-            /* 12 */ new[] { new FishEye(0.197f, -0.045f, 0.098f, 0.121f, new Color(0.04f, 0.49f, 0.97f)) },
+            /* 2 */ new[] { new FishEye(0.030f, 0.165f, 0.140f, 0.130f, new Color(0.99f, 0.48f, 0.12f)), new FishEye(0.210f, 0.165f, 0.040f, 0.110f, new Color(0.99f, 0.60f, 0.21f)) },
+            /* 3 */ new[] { new FishEye(0.312f, 0.039f, 0.152f, 0.145f, new Color(0.99f, 0.56f, 0.00f)) },
+            /* 4 */ new[] { new FishEye(0.158f, 0.082f, 0.199f, 0.195f, new Color(0.99f, 0.85f, 0.11f)), new FishEye(0.424f, 0.070f, 0.090f, 0.180f, new Color(0.99f, 0.85f, 0.11f)) },
+            /* 5 */ new[] { new FishEye(-0.020f, 0.115f, 0.180f, 0.170f, new Color(0.83f, 0.62f, 0.98f)), new FishEye(0.250f, 0.170f, 0.120f, 0.160f, new Color(0.88f, 0.73f, 0.98f)) },
+            /* 6 */ new[] { new FishEye(0.287f, 0.021f, 0.113f, 0.137f, new Color(0.98f, 0.86f, 0.33f)) },
+            /* 7 */ new[] { new FishEye(0.314f, 0.217f, 0.121f, 0.129f, new Color(0.62f, 0.83f, 0.18f)) },
+            /* 8 */ new[] { new FishEye(0.223f, 0.172f, 0.094f, 0.156f, new Color(0.67f, 0.04f, 0.77f)), new FishEye(-0.006f, 0.096f, 0.152f, 0.160f, new Color(0.59f, 0.02f, 0.74f)) },
+            /* 9 */ new[] { new FishEye(0.035f, 0.170f, 0.130f, 0.140f, new Color(0.67f, 0.72f, 0.80f)), new FishEye(0.255f, 0.240f, 0.090f, 0.120f, new Color(0.70f, 0.75f, 0.83f)) },
+            /* 10 */ new[] { new FishEye(0.102f, 0.299f, 0.102f, 0.137f, new Color(0.56f, 0.69f, 0.84f)) },
+            /* 11 */ new[] { new FishEye(0.234f, 0.090f, 0.125f, 0.125f, new Color(0.30f, 0.51f, 0.72f)) },
+            /* 12 */ new[] { new FishEye(0.285f, 0.059f, 0.098f, 0.102f, new Color(0.06f, 0.38f, 0.64f)) },
+            /* 13 */ new[] { new FishEye(0.064f, 0.016f, 0.098f, 0.102f, new Color(0.65f, 0.59f, 0.49f)), new FishEye(0.455f, 0.111f, 0.062f, 0.098f, new Color(0.55f, 0.49f, 0.39f)) },
+            /* 14 */ new[] { new FishEye(0.238f, 0.092f, 0.090f, 0.102f, new Color(0.14f, 0.16f, 0.22f)) },
+            /* 15 */ new[] { new FishEye(0.145f, 0.065f, 0.130f, 0.130f, new Color(0.48f, 0.65f, 0.86f)) },
+            /* 16 */ new[] { new FishEye(0.197f, -0.045f, 0.098f, 0.121f, new Color(0.04f, 0.49f, 0.97f)) },
         };
 
-        /// <summary>Display name per tier 0..12 (level-complete ribbon "DOLPHIN UNLOCKED!"; upper-cased on screen).</summary>
+        /// <summary>Display name per tier 0..16 (level-complete ribbon "DOLPHIN UNLOCKED!"; upper-cased on screen).</summary>
         public static readonly string[] Names =
         {
-            "Fry", "Neon Tetra", "Clownfish", "Pufferfish", "Angelfish", "Turtle", "Octopus", "Dolphin", "Shark", "Sting Ray",
-            "Hammerhead", "Orca", "Whale",
+            "Fry", "Neon Tetra", "Seahorse", "Clownfish", "Pufferfish", "Jellyfish", "Angelfish", "Sea Turtle", "Octopus", "Seal",
+            "Dolphin", "Shark", "Ray", "Hammerhead Shark", "Orca", "Narwhal", "Whale",
         };
 
         public static string Name(int tier) => Names[Mathf.Clamp(tier, 0, Names.Length - 1)];
 
-        static readonly Swim[] Mode = { Swim.Tail, Swim.Tail, Swim.Tail, Swim.Tail, Swim.Tail, Swim.Flippers, Swim.Tentacles, Swim.Tail, Swim.Tail, Swim.Flippers, Swim.Tail, Swim.Tail, Swim.Tail };   // ray: wings flap like the turtle's flippers
-        static readonly float[] Amp = { 0.035f, 0.045f, 0.035f, 0.02f, 0.03f, 0.03f, 0.04f, 0.03f, 0.03f, 0.035f, 0.03f, 0.025f, 0.025f };   // sprite units
-        static readonly float[] Speed = { 3.0f, 3.2f, 2.8f, 2.2f, 2.4f, 1.6f, 2.0f, 2.0f, 2.2f, 1.5f, 1.8f, 1.5f, 1.4f };                  // rad/s
+        static readonly Swim[] Mode = { Swim.Tail, Swim.Tail, Swim.Tentacles, Swim.Tail, Swim.Tail, Swim.Tentacles, Swim.Tail, Swim.Flippers, Swim.Tentacles, Swim.Flippers, Swim.Tail, Swim.Tail, Swim.Flippers, Swim.Tail, Swim.Tail, Swim.Tail, Swim.Tail };   // seahorse/jellyfish: lower part waves; ray/seal: flippers
+        static readonly float[] Amp = { 0.035f, 0.045f, 0.03f, 0.035f, 0.02f, 0.045f, 0.03f, 0.03f, 0.04f, 0.03f, 0.03f, 0.03f, 0.035f, 0.03f, 0.025f, 0.025f, 0.025f };   // sprite units
+        static readonly float[] Speed = { 3.0f, 3.2f, 2.4f, 2.8f, 2.2f, 1.8f, 2.4f, 1.6f, 2.0f, 1.6f, 2.0f, 2.2f, 1.5f, 1.8f, 1.5f, 1.5f, 1.4f };                  // rad/s
 
         const int N = 12; // grid cells per side
 
