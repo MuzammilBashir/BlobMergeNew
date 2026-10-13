@@ -147,6 +147,7 @@ namespace BlobMerge.EditorTools
             if (!File.Exists(FishScenePath)) // Fish: generated once, then it's the user's scene (never regenerated)
                 CreateScene(FishScenePath, mat, font, EnsureFishHud(hudPrefab), EnsureTheme("BoardTheme_Fish"), false, true);
             CreateScene(ScenePath, mat, font, hudPrefab, purple, false);
+            UiPrefabBuilder.Build(); // Fish UI prefabs (missing ones only) + HUD_Fish art / popup bake
             EditorBuildSettings.scenes = new[]
             {
                 new EditorBuildSettingsScene(ScenePath, true),

@@ -71,7 +71,7 @@ namespace BlobMerge.Ads
             // Fish: a take runs no queue rules, saves nothing and never shows the orca panel (GameController.AdTake);
             // the creature bar shows the saved window and new-fish celebrations still play (ad content).
             game.AdTake = true;
-            FishUi.DismissSplash();
+            SplashView.Dismiss();
             if (game.ProgressionOn)
                 Log("fish", $"adTake=1 highest={1 << game.progression.Highest} window={game.progression.WindowStart}");
 

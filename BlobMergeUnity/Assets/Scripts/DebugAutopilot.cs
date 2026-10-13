@@ -45,6 +45,7 @@ namespace BlobMerge
             }
             continueMode = System.Array.IndexOf(a, "-blobcontinue") >= 0;
             winShots = System.Array.IndexOf(a, "-blobwinshots") >= 0;
+            splashShot = System.Array.IndexOf(a, "-blobsplashshot") >= 0;
             sagTest = System.Array.IndexOf(a, "-blobsag") >= 0;
             fillTest = System.Array.IndexOf(a, "-blobfilltest") >= 0;
             twinTest = System.Array.IndexOf(a, "-blobtwintest") >= 0;
@@ -387,6 +388,7 @@ namespace BlobMerge
 
         // "-blobwinshots": orca celebration frames at these WinClock times (<shotPrefix>win0..5.png)
         bool winShots, won;
+        bool splashShot;
         int winShotIdx;
         static readonly float[] WinShotTimes = { 0.1f, 0.4f, 0.9f, 1.3f, 1.7f, 2.6f };
         bool WinShotsPending => winShots && won && !string.IsNullOrEmpty(shotPrefix) && winShotIdx < WinShotTimes.Length;
@@ -539,6 +541,11 @@ namespace BlobMerge
         {
             float t = Time.time - start;
             aim.SimDown = aim.SimUp = false;
+            if (splashShot && SplashView.Elapsed >= 1.2f && !string.IsNullOrEmpty(shotPrefix))
+            {
+                splashShot = false; // "-blobsplashshot": the launch splash, mid-hold
+                ScreenCapture.CaptureScreenshot(shotPrefix + "splash.png");
+            }
             if (sagTest) { SagTest(t); return; }
             if (fillTest) { FillTest(t); return; }
 

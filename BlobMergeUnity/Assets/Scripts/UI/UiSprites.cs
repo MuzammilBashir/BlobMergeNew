@@ -54,6 +54,7 @@ namespace BlobMerge
                 if (circle != null) return circle;
                 const int s = 64;
                 circle = Sprite.Create(Raster(s, s, p => (p - new Vector2(s / 2f, s / 2f)).magnitude - (s / 2f - 1f)), new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), 100f);
+                circle.name = "Circle"; // saved under this name by the UI prefab builder
                 return circle;
             }
         }
