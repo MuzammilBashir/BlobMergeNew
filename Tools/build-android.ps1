@@ -22,7 +22,7 @@ $b = Start-Process $unity -ArgumentList '-batchmode','-quit','-projectPath',$clo
 $b.WaitForExit()
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 Select-String -Path "$out\abuild.log" -Pattern "error CS|Build result|What went wrong" -Context 0,2 | Select -First 6 | % { $_.Line; $_.Context.PostContext }
-$apkName = if ($scene -eq "Hexa") { "BlobMerge_Hexa.apk" } elseif ($scene -eq "Fish") { "BlobMerge_Fish.apk" } else { "BlobMerge.apk" }
+$apkName = if ($scene -eq "Hexa") { "BlobMerge_Hexa.apk" } elseif ($scene -in "Fish","FishFantasy") { "BlobMerge_Fish.apk" } else { "BlobMerge.apk" }
 $apk = Join-Path $clone "Builds\$apkName"
 if (Test-Path $apk) {
   New-Item -ItemType Directory -Force (Join-Path $src "Builds") | Out-Null

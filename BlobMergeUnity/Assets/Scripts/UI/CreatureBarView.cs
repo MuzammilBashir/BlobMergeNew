@@ -113,7 +113,7 @@ namespace BlobMerge
 
         static void Stroke(RectTransform parent, string name, Color col, float width)
         {
-            var s = new GameObject(name, typeof(RectTransform)).AddComponent<PathStroke>();
+            var s = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer)).AddComponent<PathStroke>(); // explicit: the Editor reported PathOuter without one (no draw)
             s.rectTransform.SetParent(parent, false);
             s.rectTransform.sizeDelta = new Vector2(Width, Height); // real rect (a zero-size one may be culled on Android); points stay in local units
             s.raycastTarget = false;

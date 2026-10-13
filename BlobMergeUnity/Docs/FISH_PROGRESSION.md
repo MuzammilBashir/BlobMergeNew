@@ -88,7 +88,7 @@ Research basis: `Docs/RESEARCH_FRUIT_MERGE.md`. Mock: `.superpowers/brainstorm/�
 Goal: hard moments and real fails; the Orca (12th unlock) takes **≥ 25 min** in one game for a good player. Kept (user
 rules): 3 throwable lane blobs, lane merges + magnet. Table mock: `.superpowers/brainstorm/…/content/spawn-table.html`.
 
-- **Fish: no automatic lane merges** (user 2026-10-12): lane blobs never merge on their own and the magnet is off; a thrown blob merges with a same-value lane blob (also during `launchPassThroughTime`).
+- **Fish: no automatic lane merges** (user 2026-10-12): lane blobs never merge on their own and the magnet is off; a thrown blob merges with a same-value lane blob (also during `launchPassThroughTime`). Thrown blobs bump the lane, but a slow one up in the lane band sinks through it (`dropThroughSpeed`/`dropThroughDelay`) - the lane is never a shelf.
 
 - **Base spawn table** — driven by `R` = biggest tier made **in the current game** (resets on game over; the bar's
   lifetime progress does not drive it). Pool = tiers `[WindowStart … top]` (this game's window), top =

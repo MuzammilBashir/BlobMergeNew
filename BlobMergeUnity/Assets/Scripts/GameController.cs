@@ -194,6 +194,10 @@ namespace BlobMerge
         [Header("Throw")]
         [Tooltip("Seconds a thrown blob passes through the other lane blobs, so neighbours can't knock it off its aim.")]
         public float launchPassThroughTime = 0.25f;
+        [Tooltip("A thrown blob slower than this (units/s) with its top up in the lane band...")]
+        public float dropThroughSpeed = 1.2f;
+        [Tooltip("...for this long (s) sinks through the lane blobs instead of resting on them.")]
+        public float dropThroughDelay = 0.25f;
 
         [Header("Juice")]
         public float launchStretch = 0.22f;
@@ -209,6 +213,8 @@ namespace BlobMerge
         [Tooltip("How fast shakes die out (per second).")]
         public float shakeDecay = 1.8f;
         public float shakeFrequency = 32f;
+        [Tooltip("Multiplies every camera shake (move and roll). 0.25 = a quarter of the tuned values (user 2026-10-13).")]
+        [Range(0f, 1f)] public float shakeScale = 0.25f;
         [Tooltip("Shake when two blobs merge in the container (pile).")]
         [Range(0f, 1f)] public float pileMergeShake = 0.45f;
         [Tooltip("Extra pile-merge shake per value tier (a 256 merge shakes harder than a 4).")]
@@ -609,6 +615,7 @@ namespace BlobMerge
         {
             var b = GetBlob();
             b.Init(this, value, pos, startArea, nextId++);
+            b.DropThrough = false; b.SlowInLane = 0f; // pooled blobs
             blobs.Add(b);
             world.Bodies.Add(b.Body);
             return b;
@@ -829,8 +836,8 @@ namespace BlobMerge
             foreach (var b in blobs) b.TickVisual(dt);
             board.Tick(GameTime.UnscaledDelta);
 
-            fx.MaxShakeOffset = shakeMaxOffset;
-            fx.MaxShakeAngle = shakeMaxAngle;
+            fx.MaxShakeOffset = shakeMaxOffset * shakeScale;
+            fx.MaxShakeAngle = shakeMaxAngle * shakeScale;
             fx.ShakeDecay = shakeDecay;
             fx.ShakeFrequency = shakeFrequency;
             cam.transform.position = camBase + (Vector3)fx.ShakeOffset;
@@ -845,7 +852,9 @@ namespace BlobMerge
             {
                 b.TickPhysics(h);
                 if (b.Growing && b.State == BlobState.Free) TickGrow(b);
-                if (b.Body.IgnoreGroup == LaneGroup && b.StateTime > launchPassThroughTime) b.Body.IgnoreGroup = -1;
+                if (b.State == BlobState.Free) TickDropThrough(b, h);
+                if (b.DropThrough) b.Body.IgnoreGroup = LaneGroup;
+                else if (b.Body.IgnoreGroup == LaneGroup && b.StateTime > launchPassThroughTime) b.Body.IgnoreGroup = -1;
                 if (b.State == BlobState.Lane || b.State == BlobState.Aiming)
                     lane.ApplyForces(b, b.State == BlobState.Aiming ? aimDir : Vector2.zero, b.State == BlobState.Aiming ? aimPower : 0f,
                                      LaneAutoMerge ? blobs : null); // null = no same-value magnet
@@ -1127,6 +1136,18 @@ namespace BlobMerge
             if (score > best) { best = score; PlayerPrefs.SetInt(BestKey, best); }
             hud.SetScore(score, true);
             hud.SetBest(best);
+        }
+
+        /// <summary>The lane bumps thrown blobs but is a floating queue, not a shelf: a Free blob that stays slow with its top
+        /// up in the lane band (banked off the ceiling onto the spring-held lane blobs, wedged at a wall door) sinks through
+        /// the lane until it is below it - it used to rest there above the danger line (false game over, 2026-10-12).</summary>
+        void TickDropThrough(Blob b, float h)
+        {
+            bool inBand = b.Body.Max.y > board.WaterY;
+            if (!inBand) { b.DropThrough = false; b.SlowInLane = 0f; return; }
+            b.SlowInLane = b.StateTime > launchPassThroughTime && b.Body.Velocity.sqrMagnitude < dropThroughSpeed * dropThroughSpeed
+                ? b.SlowInLane + h : 0f;
+            if (b.SlowInLane > dropThroughDelay) b.DropThrough = true;
         }
 
         // ================================================================== game over

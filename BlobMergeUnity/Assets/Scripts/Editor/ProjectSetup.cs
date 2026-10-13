@@ -12,7 +12,7 @@ namespace BlobMerge.EditorTools
     {
         const string ScenePath = "Assets/Scenes/Game.unity";
         const string HexaScenePath = "Assets/Scenes/Hexa.unity";
-        const string FishScenePath = "Assets/Scenes/Fish.unity";
+        const string FishScenePath = "Assets/Scenes/FishFantasy.unity";
         const string FishHudPath = "Assets/Resources/UI/HUD_Fish.prefab";
         const string ThemeDir = "Assets/Themes";
         const string HudPath = "Assets/Resources/UI/HUD.prefab";
@@ -25,7 +25,7 @@ namespace BlobMerge.EditorTools
             var a = System.Environment.GetCommandLineArgs();
             for (int i = 0; i < a.Length - 1; i++)
                 if (a[i] == "-blobscene") variant = a[i + 1];
-            return variant == "Hexa" ? HexaScenePath : variant == "Fish" ? FishScenePath : ScenePath;
+            return variant == "Hexa" ? HexaScenePath : variant == "Fish" || variant == "FishFantasy" ? FishScenePath : ScenePath;
         }
 
         /// <summary>Loads a theme asset, creating it with the default (purple) colours if missing. Never overwrites.</summary>
