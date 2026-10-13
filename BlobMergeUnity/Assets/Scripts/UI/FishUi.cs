@@ -12,14 +12,16 @@ namespace BlobMerge
     /// </summary>
     public class FishUi : MonoBehaviour
     {
-        const float PopupWidth = 760f, PopDur = 0.45f;
+        const float PopupWidth = 680f, PopDur = 0.45f;
         const float SplashHold = 2.2f, SplashFade = 0.35f, LogoIn = 0.15f, LogoDur = 0.5f;
 
         static bool splashShown; // once per app launch (Restart reloads the scene)
         static FishUi active;
 
-        RectTransform card;
+        RectTransform card, crownIcon;
+        TMP_Text bestValue;
         float cardT = -1f;
+        static readonly Color Ink = new Color32(0x14, 0x30, 0x6B, 0xFF);
 
         CanvasGroup splash;
         RectTransform logo;
@@ -58,6 +60,7 @@ namespace BlobMerge
                 }
                 if (hud.scoreText != null) hud.scoreText.rectTransform.anchoredPosition = new Vector2(0f, -12f);
             }
+            if (hud.bestText != null) hud.bestText.enableWordWrapping = false; // 5-digit bests wrapped to "4453 / 0"
             if (theme.uiCrown != null && Find(hud.transform, "Crown") is RectTransform crown)
             {
                 Swap(crown.GetComponent<Image>(), theme.uiCrown);
@@ -99,35 +102,36 @@ namespace BlobMerge
             var dimImg = dim.gameObject.AddComponent<Image>();
             dimImg.color = new Color(0.02f, 0.08f, 0.2f, 0.75f); // blocks taps on the board
 
-            float h = PopupWidth / Aspect(theme.uiPopup);
+            // the card is 9-sliced (wave header in the top border), so its height follows the content
+            const float h = 760f;
             card = Rect("Card", dim, Half, Half, Vector2.zero, new Vector2(PopupWidth, h));
             Img(card, theme.uiPopup);
 
-            var title = Txt(card, "Title", "GAME OVER", 76f, new Vector2(0f, h * 0.5f - h * 0.115f), new Vector2(PopupWidth - 80f, 110f));
+            var title = Txt(card, "Title", "GAME OVER", 76f, new Vector2(0f, h * 0.5f - 88f), new Vector2(PopupWidth - 80f, 110f));
             title.characterSpacing = 2f;
 
-            if (theme.uiGameOverArt != null)
-            {
-                float w = 440f;
-                var art = Rect("Art", card, Half, Half, new Vector2(0f, h * 0.12f), new Vector2(w, w / Aspect(theme.uiGameOverArt)));
-                Img(art, theme.uiGameOverArt);
-            }
-
-            var plateSprite = theme.uiScorePlate;
-            var plate = Rect("ScorePlate", card, Half, Half, new Vector2(0f, -h * 0.17f), new Vector2(520f, plateSprite != null ? 520f / Aspect(plateSprite) : 160f));
-            if (plateSprite != null) Img(plate, plateSprite);
-            var plateH = plate.sizeDelta.y;
-            Txt(plate, "Label", "SCORE", 30f, new Vector2(0f, plateH * 0.5f - plateH * 0.1f), new Vector2(200f, 44f));
-            hud.gameOverText = Txt(plate, "Score", "0", 84f, new Vector2(0f, -plateH * 0.1f), new Vector2(500f, 110f));
+            // body text sits on the white card: navy face (white would vanish), same font and outline
+            Txt(card, "ScoreLabel", "YOUR SCORE", 40f, new Vector2(0f, 118f), new Vector2(560f, 60f), Ink);
+            hud.gameOverText = Txt(card, "Score", "0", 120f, new Vector2(0f, 32f), new Vector2(560f, 140f), Ink);
             hud.gameOverFormat = "{0}";
 
-            var btnRt = Rect("PlayAgain", card, Half, Half, new Vector2(0f, -h * 0.5f + 120f), new Vector2(560f, 560f / Aspect(theme.uiButton)));
+            Txt(card, "BestLabel", "HIGH SCORE", 40f, new Vector2(0f, -62f), new Vector2(560f, 60f), Ink);
+            var bestRow = Rect("Best", card, Half, Half, new Vector2(0f, -122f), new Vector2(560f, 80f));
+            bestValue = Txt(bestRow, "Value", "0", 64f, Vector2.zero, new Vector2(400f, 80f), Ink);
+            bestValue.alignment = TextAlignmentOptions.Left;
+            if (theme.uiCrown != null)
+            {
+                crownIcon = Rect("Crown", bestRow, Half, Half, Vector2.zero, new Vector2(64f, 64f));
+                Img(crownIcon, theme.uiCrown).preserveAspect = true;
+            }
+
+            var btnRt = Rect("PlayAgain", card, Half, Half, new Vector2(0f, -h * 0.5f + 125f), new Vector2(480f, 480f / Aspect(theme.uiButton)));
             var btnImg = Img(btnRt, theme.uiButton);
             btnImg.raycastTarget = true;
             var btn = btnRt.gameObject.AddComponent<Button>();
             btn.targetGraphic = btnImg;
             btn.onClick.AddListener(game.Restart);
-            Txt(btnRt, "Label", "PLAY AGAIN", 60f, new Vector2(0f, 6f), new Vector2(520f, 120f));
+            Txt(btnRt, "Label", "PLAY AGAIN", 56f, new Vector2(0f, 6f), new Vector2(460f, 120f));
             hud.playAgainButton = btn;
 
             hud.gameOverPanel = dim.gameObject;
@@ -154,10 +158,10 @@ namespace BlobMerge
             return img;
         }
 
-        static TMP_Text Txt(RectTransform parent, string name, string text, float size, Vector2 pos, Vector2 dim)
+        static TMP_Text Txt(RectTransform parent, string name, string text, float size, Vector2 pos, Vector2 dim, Color? face = null)
         {
             var t = Rect(name, parent, Half, Half, pos, dim).gameObject.AddComponent<TextMeshProUGUI>();
-            TextStyle.Apply(t);
+            TextStyle.Apply(t, face);
             t.text = text;
             t.fontSize = size;
             t.alignment = TextAlignmentOptions.Center;
@@ -210,7 +214,17 @@ namespace BlobMerge
                 if (!shown) cardT = -1f;
                 else
                 {
-                    if (cardT < 0f) { cardT = 0f; hud.gameOverPanel.transform.SetAsLastSibling(); } // over the creature bar
+                    if (cardT < 0f)
+                    {
+                        cardT = 0f;
+                        hud.gameOverPanel.transform.SetAsLastSibling(); // over the creature bar
+                        // high score = the HUD's (kept up to date while playing); crown + number centred as one row
+                        bestValue.text = hud.bestText != null ? hud.bestText.text : "0";
+                        float w = bestValue.GetPreferredValues(bestValue.text).x, gap = 14f, crownW = crownIcon != null ? 64f : 0f;
+                        float left = -(crownW + gap + w) * 0.5f;
+                        if (crownIcon != null) crownIcon.anchoredPosition = new Vector2(left + crownW * 0.5f, 4f);
+                        bestValue.rectTransform.anchoredPosition = new Vector2(left + crownW + gap + 200f, 0f); // rect is 400 wide, text left-aligned
+                    }
                     cardT += dt;
                     float u = Mathf.Clamp01(cardT / PopDur);
                     card.localScale = Vector3.one * Mathf.LerpUnclamped(0.6f, 1f, LevelCompleteView.Bezier(0.34f, 1.56f, 0.64f, 1f, u));

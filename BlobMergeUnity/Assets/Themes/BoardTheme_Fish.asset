@@ -69,7 +69,6 @@ MonoBehaviour:
   uiSettingsButton: {fileID: 21300000, guid: d22dac892773f53991c6c1267c18e6ab, type: 3}
   uiPopup: {fileID: 21300000, guid: 0f7b99e69a5e6e7f056030dac8ed0881, type: 3}
   uiButton: {fileID: 21300000, guid: 42818c5d58435f1381b54da2a714c660, type: 3}
-  uiGameOverArt: {fileID: 21300000, guid: 3c7dc708088fd1b3d55ab5d3d46bff19, type: 3}
   splashBackground: {fileID: 21300000, guid: 284db30ec1042a44c8a158c226098ac8, type: 3}
   splashLogo: {fileID: 21300000, guid: b414605b3cd6f7b21705c322825f32f3, type: 3}
   backgroundPlate: {fileID: 21300000, guid: 1c1486110c47de8d8f8b0e61366e82ad, type: 3}

@@ -159,10 +159,9 @@ namespace BlobMerge
         public Sprite uiScorePlate;
         public Sprite uiCrown;
         public Sprite uiSettingsButton;
-        [Tooltip("Game-over popup card (set = the Fish fail screen: art, score, Play again button).")]
+        [Tooltip("Game-over popup card (set = the Fish fail screen: score, high score, Play again button).")]
         public Sprite uiPopup;
         public Sprite uiButton;
-        public Sprite uiGameOverArt;
         [Tooltip("Splash shown once per app launch (full-screen art + logo + Loading...).")]
         public Sprite splashBackground;
         public Sprite splashLogo;
