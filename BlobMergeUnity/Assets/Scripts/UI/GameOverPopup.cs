@@ -35,7 +35,13 @@ namespace BlobMerge
             t = 0f;
             transform.SetAsLastSibling(); // over the creature bar
             var hud = GetComponentInParent<HudView>();
-            if (best != null && hud != null && hud.bestText != null) best.text = hud.bestText.text;
+            if (hud != null)
+            {
+                if (score == null) score = hud.gameOverText;
+                // the live HUD number, so the card cannot stay on its prefab "0" if ShowGameOver's write is missed
+                if (score != null && hud.scoreText != null) score.text = hud.scoreText.text;
+                if (best != null && hud.bestText != null) best.text = hud.bestText.text;
+            }
             CentreBestRow();
             Update();
         }

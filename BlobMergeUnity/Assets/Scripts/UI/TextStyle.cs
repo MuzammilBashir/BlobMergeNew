@@ -4,15 +4,14 @@ using UnityEngine;
 namespace BlobMerge
 {
     /// <summary>
-    /// One shared TextMeshPro look for every text in the game (HUD, blob numbers, floating scores):
-    /// Barlow Bold with a thin dark-blue outline. The look lives in ONE material asset:
-    ///   Assets/Resources/Fonts/Barlow-Bold Outline.mat
-    /// Edit its Outline colour/thickness (and Face colour/dilate) to restyle all text at once.
+    /// One shared TextMeshPro look for text created in code (blob numbers, floating scores, labels):
+    /// Fredoka Bold with the blue outline material. Prefab texts keep the material they were given
+    /// (blue, or the second Fredoka outline on button labels).
     /// </summary>
     public static class TextStyle
     {
-        public const string FontResource = "Fonts/Barlow-Bold SDF";
-        public const string MaterialResource = "Fonts/Barlow-Bold Outline";
+        public const string FontResource = "Fonts/Fredoka-Bold SDF";
+        public const string MaterialResource = "Fonts/Fredoka-Bold SDF";
 
         // defaults used when the material asset doesn't exist yet
         public static readonly Color DefaultOutlineColor = new Color(0.09f, 0.10f, 0.33f, 1f);

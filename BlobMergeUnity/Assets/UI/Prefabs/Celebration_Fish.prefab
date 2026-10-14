@@ -702,8 +702,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: ALL CREATURES
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 3c1f6d9738dafe643b2aacdb9870b991, type: 2}
-  m_sharedMaterial: {fileID: 2100000, guid: 4cced46848b74b34a81dd8cc37a6389e, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 86cbd32d965425641b41fc61f30063ec, type: 2}
+  m_sharedMaterial: {fileID: 618486400484138311, guid: 86cbd32d965425641b41fc61f30063ec, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -915,8 +915,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: tap to continue
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 3c1f6d9738dafe643b2aacdb9870b991, type: 2}
-  m_sharedMaterial: {fileID: 2100000, guid: 4cced46848b74b34a81dd8cc37a6389e, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 86cbd32d965425641b41fc61f30063ec, type: 2}
+  m_sharedMaterial: {fileID: 618486400484138311, guid: 86cbd32d965425641b41fc61f30063ec, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1052,8 +1052,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: A
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 3c1f6d9738dafe643b2aacdb9870b991, type: 2}
-  m_sharedMaterial: {fileID: 2100000, guid: 4cced46848b74b34a81dd8cc37a6389e, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 86cbd32d965425641b41fc61f30063ec, type: 2}
+  m_sharedMaterial: {fileID: 618486400484138311, guid: 86cbd32d965425641b41fc61f30063ec, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1224,8 +1224,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: ORCA UNLOCKED!
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 3c1f6d9738dafe643b2aacdb9870b991, type: 2}
-  m_sharedMaterial: {fileID: 2100000, guid: 4cced46848b74b34a81dd8cc37a6389e, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 86cbd32d965425641b41fc61f30063ec, type: 2}
+  m_sharedMaterial: {fileID: 618486400484138311, guid: 86cbd32d965425641b41fc61f30063ec, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

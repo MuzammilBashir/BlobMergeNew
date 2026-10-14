@@ -41,6 +41,7 @@ namespace BlobMerge
         public float StateTime;      // seconds in current state
         public float SlowInLane;     // Free: seconds spent slow with its top up in the lane band
         public bool DropThrough;     // Free: sinking through the lane (the queue never holds a blob up)
+        public bool InTank;          // Fish: joined the pile. Cannot rise back into the queue.
         public float AreaTarget = 1f;
         public float Flash;          // 0..1 white flash
         public bool Selected;
@@ -59,21 +60,21 @@ namespace BlobMerge
             public readonly SoftBody.Snapshot Body = new SoftBody.Snapshot();
             public BlobState State;
             public float StateTime, AreaTarget, AreaVel, GrowT, GrowFrom, LaunchY;
-            public bool Growing;
+            public bool Growing, InTank;
         }
 
         public void SaveSim(SimSnapshot s)
         {
             Body.Save(s.Body);
             s.State = State; s.StateTime = StateTime; s.AreaTarget = AreaTarget; s.AreaVel = areaVel;
-            s.GrowT = GrowT; s.GrowFrom = GrowFrom; s.LaunchY = LaunchY; s.Growing = Growing;
+            s.GrowT = GrowT; s.GrowFrom = GrowFrom; s.LaunchY = LaunchY; s.Growing = Growing; s.InTank = InTank;
         }
 
         public void LoadSim(SimSnapshot s)
         {
             Body.Load(s.Body);
             State = s.State; StateTime = s.StateTime; AreaTarget = s.AreaTarget; areaVel = s.AreaVel;
-            GrowT = s.GrowT; GrowFrom = s.GrowFrom; LaunchY = s.LaunchY; Growing = s.Growing;
+            GrowT = s.GrowT; GrowFrom = s.GrowFrom; LaunchY = s.LaunchY; Growing = s.Growing; InTank = s.InTank;
         }
 
         /// <summary>Set size directly (tweens), bypassing the pop spring.</summary>
@@ -163,6 +164,7 @@ namespace BlobMerge
             Chain = 0;
             Growing = false;
             GrowT = 0f;
+            InTank = false;
             Landed = false;
             LandedTime = 0f;
             LandSpeed = 0f;
@@ -666,8 +668,8 @@ namespace BlobMerge
             float labelScale = 1f;
             if (game.blobLabelFollowsSize)
                 labelScale = Mathf.Min(Mathf.Sqrt(Mathf.Max(0.05f, Body.AreaScale)), 1.6f);
-            else if (Body.AreaScale < 0.3f * game.LaneArea)
-                labelScale = Mathf.Sqrt(Body.AreaScale / (0.3f * game.LaneArea)); // only while popping in from nothing
+            else if (Body.AreaScale < 0.3f * game.LaneAreaFor(Value))
+                labelScale = Mathf.Sqrt(Body.AreaScale / (0.3f * game.LaneAreaFor(Value))); // only while popping in from nothing
             label.transform.localScale = Vector3.one * labelScale;
             if (!Mathf.Approximately(label.fontSize, game.blobLabelHeight * fontSizePerUnit)) FitLabel(); // live tweak
         }

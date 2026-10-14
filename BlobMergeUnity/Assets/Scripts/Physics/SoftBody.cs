@@ -169,6 +169,16 @@ namespace BlobMerge
             Velocity = v;
         }
 
+        /// <summary>Slides the whole body without changing its velocity or shape.</summary>
+        public void Nudge(Vector2 d)
+        {
+            if (d.sqrMagnitude < 1e-12f) return;
+            for (int i = 0; i < N; i++) { P[i] += d; Prev[i] += d; }
+            Center += d;
+            Min += d;
+            Max += d;
+        }
+
         /// <summary>Elongate along a direction (launch stretch); constraints spring it back = jiggle.</summary>
         public void Stretch(Vector2 dir, float amount)
         {

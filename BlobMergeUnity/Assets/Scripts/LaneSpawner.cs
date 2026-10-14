@@ -47,13 +47,13 @@ namespace BlobMerge
 
         [Header("Spawn table (Fish progression only, spec §0b)")]
         [Tooltip("Creatures in the pool at game start (Fry, Neon Tetra, Clownfish = 3), counted from the bar's first creature.")]
-        public int poolStart = 3;
+        public int poolStart = 4;
         [Tooltip("Biggest creature that may spawn = the biggest made this game minus this many tiers.")]
-        public int poolLag = 3;
+        public int poolLag = 2;
         [Tooltip("Max creatures in the pool.")]
-        public int poolCap = 6;
+        public int poolCap = 8;
         [Tooltip("Each tier up is this × as likely as the one below it.")]
-        [Range(0.1f, 1f)] public float poolDecay = 0.55f;
+        [Range(0.1f, 1f)] public float poolDecay = 0.88f;
         [Tooltip("Small-fade: once the biggest made this game passes this tier, the smallest creatures spawn less often.")]
         public int poolFadeFrom = 6;
         [Tooltip("Small-fade strength per tier below (1 = no fade).")]
@@ -63,26 +63,26 @@ namespace BlobMerge
         [Tooltip("Off = the plain spawn table (no refusals, no locks).")]
         public bool difficultyOn = true;
         [Tooltip("Difficulty with the seahorse as the biggest made this game (R = 2).")]
-        [Range(0f, 1f)] public float difficultyMin = 0.3f;
+        [Range(0f, 1f)] public float difficultyMin = 0.55f;
         [Tooltip("Difficulty with the whale made this game (R = 16). Base = lerp(min, max, (R-2)/14).")]
         [Range(0f, 1f)] public float difficultyMax = 1f;
         [Tooltip("A new biggest creature this game drops the difficulty by this much (the sawtooth's relief).")]
         [Range(0f, 1f)] public float relaxDepth = 0.15f;
         [Tooltip("Seconds the relief lasts after a new biggest creature.")]
-        public float relaxSeconds = 20f;
+        public float relaxSeconds = 8f;
         [Tooltip("Seconds to climb back from the relief to the base difficulty.")]
-        public float climbSeconds = 40f;
+        public float climbSeconds = 20f;
         [Tooltip("First seconds of every game: difficulty at most Grace Difficulty.")]
-        public float graceSeconds = 60f;
-        [Range(0f, 1f)] public float graceDifficulty = 0.1f;
+        public float graceSeconds = 20f;
+        [Range(0f, 1f)] public float graceDifficulty = 0.35f;
         [Tooltip("Helpfulness of a spawn that merges at once with an exposed tank creature (top of the pile). Refuse chance = D × help.")]
         [Range(0f, 1f)] public float helpExposed = 1f;
         [Tooltip("Helpfulness of a spawn that matches a lane blob (Fish: a deliberate throw merges them; 0.8 back when the magnet merged them for free).")]
-        [Range(0f, 1f)] public float helpLane = 0.4f;
+        [Range(0f, 1f)] public float helpLane = 0.7f;
         [Tooltip("Candidates drawn per spawn; if every one is refused, the least helpful is taken.")]
         public int refusalTries = 4;
         [Tooltip("Lock length (spawns) at difficulty 0 / 1: the most needed creature does not spawn for round(lerp(min, max, D)) spawns.")]
-        public int lockMinSpawns = 4, lockMaxSpawns = 12;
+        public int lockMinSpawns = 6, lockMaxSpawns = 16;
         [Tooltip("Spawns after a lock ends before the next lock may start.")]
         public int lockCooldown = 3;
 
@@ -161,7 +161,7 @@ namespace BlobMerge
             else value = NextValue(blobs);
             NoteValue(value, false);
             Spawned?.Invoke(value);
-            float r = game.RadiusForTier(GameController.Tier(value)) * game.laneScale;
+            float r = game.LaneRadiusFor(value);
 
             int side;
             if (minX > maxX) side = -lastSide; // no settled lane blobs to measure gaps against

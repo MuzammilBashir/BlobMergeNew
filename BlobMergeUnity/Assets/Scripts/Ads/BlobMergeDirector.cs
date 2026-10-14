@@ -496,7 +496,7 @@ namespace BlobMerge.Ads
                 // a flip of horizontal travel = it rebounded off a side wall
                 if (i >= 2 && (path[i].x - path[i - 1].x) * (path[i - 1].x - path[i - 2].x) < -1e-6f) s.bank = true;
                 float grow = Mathf.SmoothStep(0f, 1f, (i + 1) / 60f / Mathf.Max(0.05f, game.scaleTweenDuration));
-                float r = b.Radius * Mathf.Lerp(game.laneScale, game.landedScale, grow);
+                float r = Mathf.Lerp(b.CurrentRadius, b.Radius * game.landedScale, grow);
                 foreach (var o in game.Blobs)
                 {
                     if (o == b || o.State != BlobState.Free) continue;

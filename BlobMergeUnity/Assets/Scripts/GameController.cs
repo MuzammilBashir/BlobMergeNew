@@ -20,7 +20,7 @@ namespace BlobMerge
     {
         [Header("Assets (assigned by Tools > BlobMerge > Setup)")]
         public Material material;
-        [Tooltip("TMP font for all text (Barlow Bold SDF). If empty, loaded from Resources/Fonts.")]
+        [Tooltip("TMP font for text created in code (Fredoka Bold SDF). If empty, loaded from Resources/Fonts.")]
         public TMP_FontAsset font;
         [Tooltip("The HUD prefab to spawn (edit it in Prefab Mode). If empty, Resources/UI/HUD is used.")]
         public HudView hudPrefab;
@@ -125,7 +125,7 @@ namespace BlobMerge
         [Tooltip("Fish width as a fraction of the bubble's diameter.")]
         [Range(0.3f, 1.2f)] public float fishSize = 0.74f;
         [Tooltip("Fish scene: bubble growth per creature up to Fish Big From Tier (17 creatures, 2026-10-13). Other scenes use Radius Per Tier.")]
-        public float fishTierStep = 0.075f;
+        public float fishTierStep = 0.105f;
         [Tooltip("Fish scene: from this tier on (10 = dolphin) the bubbles grow by Fish Big Tier Step, so the whale (16) still fits the tank.")]
         public int fishBigFromTier = 10;
         [Tooltip("Fish scene: growth per creature from Fish Big From Tier on (dolphin -> whale).")]
@@ -173,6 +173,12 @@ namespace BlobMerge
         [Header("Blob scale (lane -> pile)")]
         [Tooltip("START scale: size of blobs waiting in the top lane (1 = full size).")]
         [Range(0.2f, 1.5f)] public float laneScale = 0.5f;
+        [Tooltip("Fish queue only: smallest a waiting fish can be, in world radius. 0 = no minimum. " +
+                 "Tank size (Base Radius, Max Radius, Landed Scale) is unchanged.")]
+        [Range(0f, 2.5f)] public float laneRadiusMin = 0.48f;
+        [Tooltip("Fish queue only: largest a waiting fish can be, in world radius. 0 = no maximum. " +
+                 "Stops evolved fish in the queue from hanging down into the tank.")]
+        [Range(0f, 2.5f)] public float laneRadiusMax = 0.72f;
         [Tooltip("END scale: size of blobs once thrown into play (pile, merges).")]
         [Range(0.2f, 1.5f)] public float landedScale = 1f;
         [Tooltip("Seconds a thrown blob takes to tween from start to end scale. It also never lags behind its fall: " +
@@ -270,6 +276,9 @@ namespace BlobMerge
         public bool InMergeJob(Blob b) => merges.Exists(m => m.a == b || m.b == b);
 
         float accumulator;
+        /// <summary>Physics ticks per frame before the rest of the frame's time is dropped (a slow frame must not spiral).
+        /// The headless calibration bot ("-blobspeed" in batch mode) raises it so a fast-forward run keeps 60 ticks per game second.</summary>
+        public static int MaxStepsPerFrame = 3;
         int nextId = 1;
         int score, best;
         float dangerTimer;
@@ -523,7 +532,7 @@ namespace BlobMerge
             {
                 b.SetState(BlobState.Aiming);
                 b.Selected = true;
-                b.AreaTarget = LaneArea * 1.08f;
+                b.AreaTarget = LaneAreaFor(b.Value) * 1.08f;
                 sfx.Select();
             };
             aim.OnAim = (b, d, p) =>
@@ -546,7 +555,7 @@ namespace BlobMerge
             {
                 if (b.State == BlobState.Aiming) b.SetState(BlobState.Lane);
                 b.Selected = false;
-                b.AreaTarget = LaneArea;
+                b.AreaTarget = LaneAreaFor(b.Value);
                 aimPower = 0f;
                 aimAtMax = false;
             };
@@ -601,12 +610,17 @@ namespace BlobMerge
             lastAspect = cam.aspect; // follows the screen, or a capture texture (AdSim) when one is set
             float padX = frameThickness + 0.1f;
             float hudTop = hudSpace, bottom = frameThickness + 0.25f + (ProgressionOn ? progressBarSpace : 0f);
-            float sizeByH = (boardHeight + hudTop + bottom) * 0.5f;
+            float baseH = boardHeight + hudTop + bottom;
+            float sizeByH = baseH * 0.5f;
+            // the HUD sits inside Screen.safeArea, i.e. below a notch / punch-hole: that strip (a fraction of the screen height)
+            // is extra room above the HUD's own hudSpace, or the top bar lands on the tank (Samsung A56)
+            float inset = cam.targetTexture == null ? Mathf.Clamp(HudView.TopInsetFraction, 0f, 0.15f) : 0f;
+            float fullH = baseH / (1f - inset), extraTop = fullH - baseH;
             float sizeByW = (boardWidth + padX * 2f) * 0.5f / lastAspect;
-            cam.orthographicSize = Mathf.Max(sizeByH, sizeByW);
-            hudHeightScale = cam.orthographicSize / sizeByH;
+            cam.orthographicSize = Mathf.Max(fullH * 0.5f, sizeByW);
+            hudHeightScale = cam.orthographicSize / sizeByH; // canvas units per world unit stay fixed
             FitHudScale();
-            float top = boardHeight * 0.5f + hudTop, bot = -boardHeight * 0.5f - bottom;
+            float top = boardHeight * 0.5f + hudTop + extraTop, bot = -boardHeight * 0.5f - bottom;
             camBase = new Vector3(0, (top + bot) * 0.5f, -10);
             cam.transform.position = camBase;
             board.FitPlate(cam);
@@ -668,9 +682,10 @@ namespace BlobMerge
 
         public void SpawnLaneBlob(int value, Vector2 pos, Vector2 velocity, int side)
         {
-            var b = Spawn(value, pos, laneSpawnStartArea * LaneArea);
+            float area = LaneAreaFor(value);
+            var b = Spawn(value, pos, laneSpawnStartArea * area);
             b.SetState(BlobState.Lane);
-            b.AreaTarget = LaneArea;
+            b.AreaTarget = area;
             b.Body.Group = LaneGroup;
             b.Body.SetVelocity(velocity, PhysicsStep / substeps);
             b.Flash = 0.6f;
@@ -755,7 +770,11 @@ namespace BlobMerge
                 if (b.Growing) TickGrow(b);
                 b.StateTime += h;
                 if (b.Body.IgnoreGroup == LaneGroup && b.StateTime > launchPassThroughTime) b.Body.IgnoreGroup = -1;
+                if (FishMode)
+                    foreach (var o in blobs)
+                        if (o.InTank && o.State == BlobState.Free) o.Body.IgnoreGroup = LaneGroup;
                 world.Step(h);
+                if (FishMode) { SealTankBlobs(); HoldTankBelowQueue(h / substeps); }
 
                 float vx = b.Body.Velocity.x;
                 if (Mathf.Abs(lastVx) > 0.5f && vx * lastVx < 0f && Mathf.Abs(b.Body.Center.x) > board.HalfW - b.CurrentRadius * 1.6f)
@@ -786,6 +805,26 @@ namespace BlobMerge
         // scales are linear (size); the soft body works in area, hence squared
         public float LaneArea => laneScale * laneScale;
         float LandedArea => landedScale * landedScale;
+
+        /// <summary>World radius of a blob waiting in the queue. Fish clamps into <see cref="laneRadiusMin"/> /
+        /// <see cref="laneRadiusMax"/> (0 = that side open). Other scenes stay at Radius × Lane Scale.</summary>
+        public float LaneRadiusFor(int value)
+        {
+            float tierR = Mathf.Max(0.01f, RadiusForTier(Tier(value)));
+            float r = tierR * laneScale;
+            if (!FishMode) return r;
+            if (laneRadiusMax > 0f) r = Mathf.Min(r, laneRadiusMax);
+            if (laneRadiusMin > 0f) r = Mathf.Max(r, laneRadiusMin);
+            return r;
+        }
+
+        /// <summary>Area scale that shows a queue blob at <see cref="LaneRadiusFor"/>.</summary>
+        public float LaneAreaFor(int value)
+        {
+            float tierR = Mathf.Max(0.01f, RadiusForTier(Tier(value)));
+            float s = LaneRadiusFor(value) / tierR;
+            return s * s;
+        }
 
         /// <summary>
         /// Smooth start->end scale tween for a thrown blob. Progress is the larger of elapsed time / duration and
@@ -834,7 +873,7 @@ namespace BlobMerge
                 ApplyPhysicsSettings(); // inspector changes apply live
                 accumulator += Time.deltaTime;
                 int steps = 0;
-                while (accumulator >= PhysicsStep && steps < 3)
+                while (accumulator >= PhysicsStep && steps < MaxStepsPerFrame)
                 {
                     physicsWatch.Restart();
                     PhysicsTick(PhysicsStep);
@@ -844,7 +883,7 @@ namespace BlobMerge
                     accumulator -= PhysicsStep;
                     steps++;
                 }
-                if (steps == 3) accumulator = 0f;
+                if (steps == MaxStepsPerFrame) accumulator = 0f;
 
                 if (celebrating)
                 {
@@ -882,6 +921,9 @@ namespace BlobMerge
                 if (b.State == BlobState.Free) TickDropThrough(b, h);
                 if (b.DropThrough) b.Body.IgnoreGroup = LaneGroup;
                 else if (b.Body.IgnoreGroup == LaneGroup && b.StateTime > launchPassThroughTime) b.Body.IgnoreGroup = -1;
+                // Fish: a blob that has joined the pile never collides with the queue, so a full tank
+                // cannot shove the lane or rest inside it. A throw still passes through until it lands.
+                if (FishMode && b.InTank && b.State == BlobState.Free) b.Body.IgnoreGroup = LaneGroup;
                 if (b.State == BlobState.Lane || b.State == BlobState.Aiming)
                     lane.ApplyForces(b, b.State == BlobState.Aiming ? aimDir : Vector2.zero, b.State == BlobState.Aiming ? aimPower : 0f,
                                      LaneAutoMerge ? blobs : null); // null = no same-value magnet
@@ -897,6 +939,7 @@ namespace BlobMerge
                 }
 
             world.Step(h);
+            if (FishMode) { SealTankBlobs(); HoldTankBelowQueue(h / substeps); }
 
             // contacts: impacts + merges
             curContacts.Clear();
@@ -1134,16 +1177,17 @@ namespace BlobMerge
             Vector2 vel = (A.Velocity * ma + B.Velocity * mb) / (ma + mb);
             int value = m.a.Value * 2;
             Color oldCol = m.a.BaseColor;
+            bool fromTank = m.a.InTank || m.b.InTank;
             Release(m.a);
             Release(m.b);
 
             bool inLane = m.toLane && mid.y > board.DangerY;
-            var n = Spawn(value, mid, mergeStartArea * (inLane ? LaneArea : LandedArea));
+            var n = Spawn(value, mid, mergeStartArea * (inLane ? LaneAreaFor(value) : LandedArea));
             if (inLane)
             {
                 // merged at the top: stays floating (lane-sized) in the lane, throwable
                 n.SetState(BlobState.Lane);
-                n.AreaTarget = LaneArea;
+                n.AreaTarget = LaneAreaFor(value);
                 n.Body.Group = LaneGroup;
                 n.Body.SetVelocity(vel * 0.3f, h / substeps);
             }
@@ -1153,12 +1197,19 @@ namespace BlobMerge
                 n.AreaTarget = LandedArea;
                 n.Body.UseGravity = true;
                 n.Body.SetVelocity(vel * 0.4f + Vector2.up * 1.5f, h / substeps);
+                // a merge of pile blobs stays in the tank: the pop must not carry it up into the queue
+                if (FishMode && (fromTank || n.Body.Center.y < TankCeilingY()))
+                {
+                    n.InTank = true;
+                    n.Body.IgnoreGroup = LaneGroup;
+                    HoldOneBelowQueue(n, h / substeps);
+                }
             }
             n.Flash = 1f;
             n.Chain = m.chain + 1;
 
             // juice
-            float r = n.Radius * (inLane ? laneScale : landedScale); // FX sized to how big the result will be
+            float r = inLane ? LaneRadiusFor(value) : n.Radius * landedScale; // FX sized to how big the result will be
             int tier = n.Tier;
             if (FishMode)
             {
@@ -1186,6 +1237,63 @@ namespace BlobMerge
             hud.SetScore(score, true);
             hud.SetBest(best);
         }
+
+        /// <summary>Highest a pile blob's top may sit. Just under the queue, so a full tank cannot climb into the lane.</summary>
+        float TankCeilingY()
+        {
+            float reach = laneRadiusMax > 0.01f ? laneRadiusMax : maxRadius * laneScale;
+            return board.LaneY - reach - Mathf.Max(blobGap, 0.04f) - 0.06f;
+        }
+
+        /// <summary>Fish: a free blob joins the tank once its centre drops under the queue.
+        /// A throw whose centre is still in the lane stays unsealed, so it can merge with a queue twin.</summary>
+        void SealTankBlobs()
+        {
+            float line = TankCeilingY();
+            foreach (var b in blobs)
+            {
+                if (b.InTank || b.State != BlobState.Free) continue;
+                if (b.Body.Center.y < line) b.InTank = true;
+            }
+        }
+
+        /// <summary>Push every sealed blob down until its top is under the queue and clear of every lane bubble.
+        /// A throw that is still falling through the lane is left alone.</summary>
+        void HoldTankBelowQueue(float substepH)
+        {
+            float line = TankCeilingY();
+            foreach (var b in blobs)
+                HoldOneBelowQueue(b, substepH, line);
+        }
+
+        void HoldOneBelowQueue(Blob b, float substepH) => HoldOneBelowQueue(b, substepH, TankCeilingY());
+
+        void HoldOneBelowQueue(Blob b, float substepH, float line)
+        {
+            if (!b.InTank || (b.State != BlobState.Free && b.State != BlobState.Merging)) return;
+            // a throw may still be falling through the queue; once it slows or rises, it cannot come back up
+            if (b.Growing && b.Body.Velocity.y < -0.5f) return;
+            bool held = false;
+            float over = b.Body.Max.y - line;
+            if (over > 0f) { b.Body.Nudge(new Vector2(0f, -over)); held = true; }
+            for (int i = 0; i < blobs.Count; i++)
+            {
+                var q = blobs[i];
+                if (q.State != BlobState.Lane && q.State != BlobState.Aiming) continue;
+                if (b.Body.Max.x < q.Body.Min.x - blobGap || b.Body.Min.x > q.Body.Max.x + blobGap) continue;
+                float gap = b.Body.Max.y - (q.Body.Min.y - blobGap);
+                if (gap > 0.001f) { b.Body.Nudge(new Vector2(0f, -gap)); held = true; }
+            }
+            if (held && b.Body.Velocity.y > 0f)
+                b.Body.SetVelocity(new Vector2(b.Body.Velocity.x, 0f), substepH);
+            if (held && b.Body.Max.y > line + 0.05f && Time.time >= nextTankLeakLog)
+            {
+                nextTankLeakLog = Time.time + 1f;
+                Debug.Log($"[BlobMerge] tank still in queue {b.Value} top={b.Body.Max.y:F2} ceiling={line:F2}");
+            }
+        }
+
+        float nextTankLeakLog;
 
         /// <summary>The lane bumps thrown blobs but is a floating queue, not a shelf: a Free blob that stays slow with its top
         /// up in the lane band (banked off the ceiling onto the spring-held lane blobs, wedged at a wall door) sinks through
@@ -1224,6 +1332,7 @@ namespace BlobMerge
             aim.InputEnabled = false;
             Time.timeScale = 0f;
             hud.ShowGameOver(score);
+            Debug.Log($"[BlobMerge] game over score={score} shown={(hud.gameOverText != null ? hud.gameOverText.text : "none")}");
             sfx.GameOver();
             sfx.PopUp(); // the popup card appearing
         }
