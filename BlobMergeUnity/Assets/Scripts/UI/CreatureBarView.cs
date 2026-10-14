@@ -23,7 +23,9 @@ namespace BlobMerge
         const float OuterStroke = 72f, InnerStroke = 54f, TagY = 468f, TagSize = 54f, EnterFromX = 90f;
         static readonly Vector2[] PathPoints = { new Vector2(-474f, -66f), new Vector2(21f, -66f), new Vector2(75f, 66f), new Vector2(495f, 66f) };
         // timings (mock CSS / JS)
-        const float PopMargin = 60f; // room each side for an end icon's pop (1.7x) so it never clips at the screen edge
+        // room each side for an end icon's pop (1.7x grows it ~27 beyond its slot). Kept small: on narrow phones (Samsung A56,
+        // 9:19.5) every unit here shrinks the whole strip, and the pop is brief
+        const float PopMargin = 24f;
         const float FlyDur = 0.7f, FlySize = 192f, PopAt = 0.72f, PopDur = 0.55f, ShiftDelay = 0.7f;
         const float SlideDur = 0.6f, FadeDur = 0.4f, TagDur = 1.4f;
         const float GlowDur = 0.9f, GlowSize = 180f, RingDur = 0.6f, SparkDur = 0.7f, SparkSize = 15f, SparkDist = 78f;

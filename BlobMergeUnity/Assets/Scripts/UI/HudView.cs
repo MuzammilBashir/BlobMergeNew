@@ -40,11 +40,35 @@ namespace BlobMerge
 
         float punch;
 
+        static Rect? safeOverride;
+        static bool safeParsed;
+
+        /// <summary>The screen's safe area; test hook "-blobsafetop F" fakes a notch of F (0..1) of the screen height.</summary>
+        public static Rect SafeRect
+        {
+            get
+            {
+                if (!safeParsed)
+                {
+                    safeParsed = true;
+                    var a = System.Environment.GetCommandLineArgs();
+                    for (int i = 0; i < a.Length - 1; i++)
+                        if (a[i] == "-blobsafetop" && float.TryParse(a[i + 1], System.Globalization.NumberStyles.Float,
+                                System.Globalization.CultureInfo.InvariantCulture, out float f))
+                            safeOverride = new Rect(0f, 0f, Screen.width, Screen.height * (1f - f));
+                }
+                return safeOverride ?? Screen.safeArea;
+            }
+        }
+
+        /// <summary>Height of the notch / status strip above the safe area, as a fraction of the screen height.</summary>
+        public static float TopInsetFraction => Screen.height <= 0 ? 0f : (Screen.height - SafeRect.yMax) / Screen.height;
+
         void Awake()
         {
             if (safeArea != null && Application.isPlaying)
             {
-                var sa = Screen.safeArea;
+                var sa = SafeRect;
                 safeArea.anchorMin = new Vector2(sa.xMin / Screen.width, sa.yMin / Screen.height);
                 safeArea.anchorMax = new Vector2(sa.xMax / Screen.width, sa.yMax / Screen.height);
                 safeArea.offsetMin = safeArea.offsetMax = Vector2.zero;
@@ -74,7 +98,21 @@ namespace BlobMerge
         public void ShowGameOver(int score)
         {
             if (gameOverPanel != null) gameOverPanel.SetActive(true);
-            if (gameOverText != null) gameOverText.text = string.Format(gameOverFormat, score);
+            string shown = string.Format(gameOverFormat, score);
+            if (gameOverText != null)
+            {
+                gameOverText.text = shown;
+                gameOverText.ForceMeshUpdate();
+            }
+            if (gameOverPanel != null)
+            {
+                var popup = gameOverPanel.GetComponent<GameOverPopup>();
+                if (popup != null && popup.score != null && popup.score != gameOverText)
+                {
+                    popup.score.text = score.ToString();
+                    popup.score.ForceMeshUpdate();
+                }
+            }
         }
 
         void Update()

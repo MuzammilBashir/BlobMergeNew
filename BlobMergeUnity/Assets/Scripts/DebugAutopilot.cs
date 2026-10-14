@@ -47,6 +47,8 @@ namespace BlobMerge
             winShots = System.Array.IndexOf(a, "-blobwinshots") >= 0;
             splashShot = System.Array.IndexOf(a, "-blobsplashshot") >= 0;
             sagTest = System.Array.IndexOf(a, "-blobsag") >= 0;
+            randomPlay = System.Array.IndexOf(a, "-blobrandom") >= 0;
+            skilledPlay = System.Array.IndexOf(a, "-blobskilled") >= 0;
             settingsTest = System.Array.IndexOf(a, "-blobsettings") >= 0;
             if (settingsTest) Sfx.Played += (n, v, p) => { if (n.StartsWith("ui_")) Debug.Log($"[BlobMerge] ui sound: {n} vol={v:F2} (soundOn={GameSettings.SoundOn})"); };
             fillTest = System.Array.IndexOf(a, "-blobfilltest") >= 0;
@@ -89,10 +91,17 @@ namespace BlobMerge
             fishShots = System.Array.IndexOf(a, "-blobfishshots") >= 0;
             if (pressureOverride > 0f) GetComponent<GameController>().pressure = pressureOverride;
             for (int i = 0; i < a.Length - 1; i++)
+                if (a[i] == "-blobset") ApplySet(a[i + 1]);
+            for (int i = 0; i < a.Length - 1; i++)
                 if (a[i] == "-blobgap" && float.TryParse(a[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float gp))
                     GetComponent<GameController>().blobGap = gp;
             for (int i = 0; i < a.Length - 1; i++)
                 if (a[i] == "-blobspeed") float.TryParse(a[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out speed);
+            if (Application.isBatchMode && speed > 3f) // headless fast-forward keeps every tick
+            {
+                GameController.MaxStepsPerFrame = 1000;
+                Time.maximumDeltaTime = 1f;
+            }
             if (System.Array.IndexOf(a, "-blobnodirector") >= 0) GetComponent<GameController>().lane.difficultyOn = false;
             for (int i = 0; i < a.Length - 1; i++)
                 if (a[i] == "-blobshape" && float.TryParse(a[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float sh))
@@ -116,6 +125,9 @@ namespace BlobMerge
             }
             if (duration <= 0f) { enabled = false; return; }
             game = GetComponent<GameController>();
+            if (game.FishMode)
+                Debug.Log($"[BlobMerge] queue size min={game.laneRadiusMin:F2} max={game.laneRadiusMax:F2} " +
+                          $"r1={game.LaneRadiusFor(1):F2} r16={game.LaneRadiusFor(16):F2} r1024={game.LaneRadiusFor(1024):F2} r65536={game.LaneRadiusFor(65536):F2}");
             aim = GetComponent<AimController>();
             aim.SimEnabled = true;
             if (twinTest) { game.lane.startValues = new[] { 2, 2, 2 }; game.lane.ValueOverride = () => 2; } // all lane blobs 2s: twins side by side
@@ -188,14 +200,14 @@ namespace BlobMerge
         {
             var bd = game.Board;
             int v = game.SpawnFloor;
-            float rl = game.RadiusForTier(GameController.Tier(v * 2)) * game.laneScale;
+            float rl = game.LaneRadiusFor(v * 2);
             float rf = game.RadiusForTier(GameController.Tier(v * 4)) * game.landedScale;
             if (doorStep == 0 && t > 1f)
             {
                 doorStep++;
                 // left: a banked clownfish comes down onto the lane piece at the door and its neighbour (a two-piece shelf);
                 // right: onto a single lane piece entering at the door
-                float rl1 = game.RadiusForTier(GameController.Tier(v)) * game.laneScale;
+                float rl1 = game.LaneRadiusFor(v);
                 float xDoor = -bd.HalfW + rl, xNext = xDoor + rl + rl1 + game.blobGap;
                 game.SpawnLaneBlob(v * 2, new Vector2(xDoor, bd.LaneY), Vector2.zero, -1);
                 game.SpawnLaneBlob(v, new Vector2(xNext, bd.LaneY), Vector2.zero, -1);
@@ -220,7 +232,7 @@ namespace BlobMerge
             if (cornerTest) { CornerTest(t); return; }
             var bd = game.Board;
             int v = game.SpawnFloor * 4; // clownfish
-            float r = game.RadiusForTier(GameController.Tier(v)) * game.laneScale;
+            float r = game.LaneRadiusFor(v);
             Vector2 R = new Vector2(bd.HalfW - r * 0.55f, bd.LaneY), L = new Vector2(-R.x, bd.LaneY);
             if (doorStep == 0 && t > 1f)
             {
@@ -258,7 +270,7 @@ namespace BlobMerge
             $"{b.Value} {b.State} c=({b.Body.Center.x:F2},{b.Body.Center.y:F2}) v=({b.Body.Velocity.x:F2},{b.Body.Velocity.y:F2}) " +
             $"grav={b.Body.UseGravity} acc=({b.Body.ExtraAccel.x:F1},{b.Body.ExtraAccel.y:F1}) grp={b.Body.Group} ign={b.Body.IgnoreGroup} " +
             $"mass={b.Body.MassScale:F1} job={game.InMergeJob(b)} st={b.StateTime:F1} scale={Mathf.Sqrt(b.Body.AreaScale):F2} " +
-            $"grow={b.Growing} landed={b.Landed}";
+            $"grow={b.Growing} landed={b.Landed} tank={b.InTank}";
 
         /// <summary>Blobs within reach of b (centre offset from b, state, value, overlap depth = radius sum - distance).</summary>
         string Touches(Blob b)
@@ -711,7 +723,7 @@ namespace BlobMerge
             int free = 0;
             foreach (var b in game.Blobs) if (b.State == BlobState.Free) free++;
             Debug.Log($"[BlobMerge] game {gameNo}: difficulty D={game.lane.Difficulty:F2} R={game.lane.GameBest} locks={game.lane.Locks} " +
-                      $"refusals={game.lane.Refusals} lockedSpawns={game.lane.LockedSpawns} t={t:F0}s throws={game.lane.Shots} tank={free} " +
+                      $"refusals={game.lane.Refusals} lockedSpawns={game.lane.LockedSpawns} t={t:F0}s throws={game.lane.Shots} tank={free} fill={TankFill():P0} " +
                       $"ticks/s={rate:F0}");
             if (!string.IsNullOrEmpty(shotPrefix)) ScreenCapture.CaptureScreenshot(shotPrefix + "g" + gameNo + "_late.png");
         }
@@ -907,11 +919,120 @@ namespace BlobMerge
             return true;
         }
 
+        /// <summary>"-blobset a=1,lane.poolStart=5": overrides GameController tunables (dotted = nested field) for calibration
+        /// runs, without touching the scene. Floats, ints and bools.</summary>
+        void ApplySet(string spec)
+        {
+            var gc = GetComponent<GameController>();
+            foreach (var kv in spec.Split(','))
+            {
+                var p = kv.Split('=');
+                if (p.Length != 2) continue;
+                object target = gc;
+                var parts = p[0].Split('.');
+                bool ok = true;
+                for (int i = 0; i < parts.Length - 1 && ok; i++)
+                {
+                    var f = target.GetType().GetField(parts[i]);
+                    if (f == null) ok = false; else target = f.GetValue(target);
+                }
+                var last = ok ? target.GetType().GetField(parts[parts.Length - 1]) : null;
+                if (last == null) { Debug.Log($"[BlobMerge] -blobset: no field '{p[0]}'"); continue; }
+                var t = last.FieldType;
+                object val = t == typeof(bool) ? (object)(p[1] == "1" || p[1] == "true")
+                           : t == typeof(int) ? (object)int.Parse(p[1])
+                           : (object)float.Parse(p[1], System.Globalization.CultureInfo.InvariantCulture);
+                last.SetValue(target, val);
+                Debug.Log($"[BlobMerge] -blobset {p[0]} = {p[1]}");
+            }
+        }
+
+        bool randomPlay, skilledPlay;
+
+        /// <summary>A Free blob below the danger line with no other Free blob sitting on top of it (a throw can reach it).</summary>
+        bool IsExposed(Blob e)
+        {
+            foreach (var o in game.Blobs)
+            {
+                if (o == e || o.State != BlobState.Free) continue;
+                float rr = e.CurrentRadius + o.CurrentRadius;
+                Vector2 d = o.Body.Center - e.Body.Center;
+                if (d.y > 0f && Mathf.Abs(d.x) < 0.75f * rr && d.magnitude < 1.25f * rr) return false;
+            }
+            return true;
+        }
+
+        /// <summary>"-blobskilled": a careful player. Throws at the biggest same-value pair it can reach (an exposed tank blob,
+        /// or a lane neighbour); otherwise puts the smallest lane blob into the lowest spot of the pile (never on top of a tall heap).</summary>
+        bool SkilledShot()
+        {
+            var bd = game.Board;
+            var lanes = new List<Blob>();
+            foreach (var l in game.Blobs) if (l.State == BlobState.Lane && l.StateTime > 0.15f) lanes.Add(l);
+            if (lanes.Count == 0) return false;
+            Blob pick = null, target = null;
+            int bestVal = 0;
+            foreach (var l in lanes)
+            {
+                foreach (var f in game.Blobs)
+                    if (f.State == BlobState.Free && f.Value == l.Value && f.Body.Center.y < bd.DangerY && IsExposed(f) && l.Value > bestVal)
+                    { pick = l; target = f; bestVal = l.Value; }
+                foreach (var o in lanes)
+                    if (o != l && o.Value == l.Value && l.Value > bestVal) { pick = l; target = o; bestVal = l.Value; }
+            }
+            Vector2 goal;
+            if (target != null) goal = target.Body.Center;
+            else
+            {
+                pick = lanes[0];
+                foreach (var l in lanes) if (l.Value < pick.Value) pick = l;
+                // lowest column of the pile: 8 bins across, the tallest blob top in each
+                const int bins = 8;
+                var top = new float[bins];
+                for (int i = 0; i < bins; i++) top[i] = bd.FloorY;
+                foreach (var f in game.Blobs)
+                {
+                    if (f.State != BlobState.Free) continue;
+                    int lo = Mathf.Clamp((int)((f.Body.Min.x + bd.HalfW) / (2f * bd.HalfW) * bins), 0, bins - 1);
+                    int hi = Mathf.Clamp((int)((f.Body.Max.x + bd.HalfW) / (2f * bd.HalfW) * bins), 0, bins - 1);
+                    for (int i = lo; i <= hi; i++) top[i] = Mathf.Max(top[i], f.Body.Max.y);
+                }
+                int bestBin = 0;
+                for (int i = 1; i < bins; i++) if (top[i] < top[bestBin] - 0.01f) bestBin = i;
+                goal = new Vector2(-bd.HalfW + (bestBin + 0.5f) / bins * 2f * bd.HalfW, top[bestBin] - 0.5f);
+            }
+            from = pick.Body.Center;
+            Vector2 dir = (goal - from).normalized;
+            to = from + dir * Mathf.Clamp(Vector2.Distance(goal, from) * 0.4f, 1.3f, aim.maxDrag + 1f);
+            throws++;
+            return true;
+        }
+
+        /// <summary>"-blobrandom": a player who never looks at the tank - any lane blob, thrown at a random spot in the pile
+        /// area with a random power (difficulty baseline: how long does mindless throwing survive?).</summary>
+        bool RandomShot()
+        {
+            var lanes = new List<Blob>();
+            foreach (var l in game.Blobs) if (l.State == BlobState.Lane && l.StateTime > 0.15f) lanes.Add(l);
+            if (lanes.Count == 0) return false;
+            var pick = lanes[Random.Range(0, lanes.Count)];
+            from = pick.Body.Center;
+            var bd = game.Board;
+            Vector2 goal = new Vector2(Random.Range(-bd.HalfW * 0.8f, bd.HalfW * 0.8f), Random.Range(bd.FloorY + 1f, bd.DangerY - 1f));
+            Vector2 dir = (goal - from).normalized;
+            float len = Mathf.Clamp(Vector2.Distance(goal, from) * 0.4f, 1.3f, aim.maxDrag + 1f);
+            to = from + dir * len;
+            throws++;
+            return true;
+        }
+
         /// <summary>Prefer throwing a lane blob at a resting blob with the same value; otherwise random.</summary>
         bool ChooseShot()
         {
             Blob pick = null, target = null;
             if (twinTest) return TwinShot();
+            if (randomPlay) return RandomShot();
+            if (skilledPlay) return SkilledShot();
             if (ceiling) return CeilingShot();
             foreach (var l in game.Blobs)
             {

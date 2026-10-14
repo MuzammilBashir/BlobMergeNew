@@ -291,27 +291,27 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   material: {fileID: 2100000, guid: 4be638bc33440c74586c278c0d0161a6, type: 2}
-  font: {fileID: 11400000, guid: 3c1f6d9738dafe643b2aacdb9870b991, type: 2}
+  font: {fileID: 11400000, guid: 86cbd32d965425641b41fc61f30063ec, type: 2}
   hudPrefab: {fileID: 7014836424449631197, guid: 63c397d7dffdc8041b0aa796a04cd43b, type: 3}
   boardTheme: {fileID: 11400000, guid: 0428b002a3374c378c48a045ec8a2a66, type: 2}
   hudOffsetY: 0
   boardWidth: 8
   boardHeight: 14
   frameThickness: 0.6
-  hudSpace: 3.1
+  hudSpace: 4.22
   frameCornerRadius: 0.3
-  waterLineBelowLane: 0.45
+  waterLineBelowLane: 0.378
   bubbleCount: 12
-  chamfer: 0.75
-  laneFromTop: 1.35
-  dangerLineFromFloor: 9.6
+  chamfer: 0.63
+  laneFromTop: 1.8
+  dangerLineFromFloor: 10
   dangerHoldSeconds: 1.6
   sideBumpers: 0
   bumperRadius: 0.6
   bumperHeightFromFloor: 8.4
-  baseRadius: 0.5
-  radiusPerTier: 0.115
-  maxRadius: 1.75
+  baseRadius: 0.6
+  radiusPerTier: 0.105
+  maxRadius: 1.95
   silhouetteNoise: 0.02
   elongation: 0.05
   pointsPerBlob: 20
@@ -342,8 +342,9 @@ MonoBehaviour:
   hexSettleTime: 0.12
   hexLandingBounce: 0.2
   fishSize: 0.74
-  fishRadiusPerTier: 0.115
-  fishBigRadiusPerTier: 0.05
+  fishTierStep: 0.105
+  fishBigFromTier: 10
+  fishBigTierStep: 0.04
   fishShowNumbers: 0
   fishLabelDrop: 0.52
   bubbleTint: 0.18
@@ -364,8 +365,10 @@ MonoBehaviour:
   popSpring: 240
   popDamping: 13
   laneSpawnStartArea: 0.2
-  laneScale: 0.8
-  landedScale: 1.1
+  laneScale: 0.85
+  laneRadiusMin: 0.55
+  laneRadiusMax: 1.1
+  landedScale: 1
   scaleTweenDuration: 0.45
   mergeStartArea: 0.55
   mergeDuration: 0.12
@@ -373,6 +376,9 @@ MonoBehaviour:
   mergeInLane: 1
   laneAutoMerge: 0
   blobGap: 0.03
+  launchPassThroughTime: 0.25
+  dropThroughSpeed: 1.2
+  dropThroughDelay: 0.25
   launchStretch: 0.22
   throwSoundVolume: 0
   impactFxSpeed: 7
@@ -380,6 +386,7 @@ MonoBehaviour:
   shakeMaxAngle: 2.5
   shakeDecay: 0.8
   shakeFrequency: 16
+  shakeScale: 0.25
   pileMergeShake: 0.2
   pileMergeShakePerTier: 0.05
   laneMergeShake: 0.15
@@ -415,30 +422,30 @@ MonoBehaviour:
     weight16PerShot: 0.05
     weight16Max: 0.4
     maxSameInRow: 2
-    poolStart: 3
-    poolLag: 3
-    poolCap: 6
-    poolDecay: 0.55
+    poolStart: 4
+    poolLag: 2
+    poolCap: 8
+    poolDecay: 0.88
     poolFadeFrom: 6
     poolFade: 0.6
     difficultyOn: 1
-    difficultyMin: 0.3
+    difficultyMin: 0.55
     difficultyMax: 1
     relaxDepth: 0.15
-    relaxSeconds: 20
-    climbSeconds: 40
-    graceSeconds: 60
-    graceDifficulty: 0.1
+    relaxSeconds: 8
+    climbSeconds: 20
+    graceSeconds: 20
+    graceDifficulty: 0.35
     helpExposed: 1
-    helpLane: 0.4
+    helpLane: 0.7
     refusalTries: 4
-    lockMinSpawns: 4
-    lockMaxSpawns: 12
+    lockMinSpawns: 6
+    lockMaxSpawns: 16
     lockCooldown: 3
   progression:
     enabled: 1
     windowSize: 11
-  progressBarSpace: 2.2
+  progressBarSpace: 3.32
   celebration:
     enabled: 1
     celebrationConfetti: 1

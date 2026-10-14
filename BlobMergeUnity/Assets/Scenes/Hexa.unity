@@ -291,7 +291,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   material: {fileID: 2100000, guid: 4be638bc33440c74586c278c0d0161a6, type: 2}
-  font: {fileID: 11400000, guid: 3c1f6d9738dafe643b2aacdb9870b991, type: 2}
+  font: {fileID: 11400000, guid: 86cbd32d965425641b41fc61f30063ec, type: 2}
   hudPrefab: {fileID: 7014836424449631197, guid: 4d468a9747d49754a8a4b43bcb8c1b7e, type: 3}
   boardTheme: {fileID: 11400000, guid: 7308c8eade26d70488bdcc81c36dd115, type: 2}
   hudOffsetY: 0
